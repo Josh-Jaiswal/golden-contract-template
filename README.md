@@ -86,7 +86,7 @@ contract-pipeline/
 ├── .env.example               ← copy to .env and fill in
 └── requirements.txt
 ```
-
+python orchestration/functions-or-container-app/run_pipeline.py --input orchestration/functions-or-container-app/run_pipeline.py --type nda --no-blob
 ## What Needs Wiring (TODOs)
 
 | File | TODO | Azure Service |
