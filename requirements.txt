@@ -1,0 +1,30 @@
+# requirements.txt
+# Core pipeline dependencies
+
+# Azure SDKs
+azure-storage-blob>=12.19.0          # Blob Storage (already partial)
+azure-ai-documentintelligence>=1.0.0 # Content Understanding / Document Intelligence
+azure-cognitiveservices-speech>=1.35.0 # Speech-to-text (need to provision)
+openai>=1.30.0                        # Azure OpenAI GPT-4o (need to provision)
+
+# DOCX → PDF conversion (try these in order)
+python-docx>=1.1.0                   # Read/manipulate DOCX files
+docx2pdf>=0.1.8                      # DOCX → PDF (works best on Windows/Mac)
+pypandoc>=1.13                        # Alternative DOCX → PDF (needs pandoc + LaTeX)
+# LibreOffice is installed separately (apt install libreoffice) for Linux
+
+# Email parsing
+extract-msg>=0.48.0                  # Outlook .msg file parser
+
+# Schema & config
+pyyaml>=6.0.1                        # Parse mapping-matrix.yaml + precedence-rules.yaml
+jsonschema>=4.22.0                   # Validate against contract-package.schema.json
+python-dotenv>=1.0.0                 # Load .env file
+
+# API server (optional — for HTTP endpoint)
+fastapi>=0.111.0
+uvicorn>=0.30.0
+
+# Dev/testing
+pytest>=8.2.0
+pytest-asyncio>=0.23.0
