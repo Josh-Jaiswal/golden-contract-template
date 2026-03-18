@@ -1,0 +1,26 @@
+# .env.example
+# Copy this file to .env and fill in your values.
+# NEVER commit .env to source control.
+
+# ── Azure Content Understanding ──────────────────────────────────────────────
+# Found in: Azure Portal → your CU resource → Keys and Endpoint
+AZURE_CU_ENDPOINT=https://YOUR_RESOURCE.cognitiveservices.azure.com/
+AZURE_CU_KEY=your_cu_api_key_here
+
+# ── Azure Blob Storage ───────────────────────────────────────────────────────
+# Found in: Azure Portal → Storage Account → Access Keys → Connection string
+AZURE_BLOB_CONNECTION_STR=DefaultEndpointsProtocol=https;AccountName=...
+
+# ── Azure OpenAI (GPT-4o) ────────────────────────────────────────────────────
+# Requires approval: https://aka.ms/oai/access (usually same-day now)
+# Found in: Azure Portal → Azure OpenAI → Keys and Endpoint
+AZURE_OPENAI_ENDPOINT=https://YOUR_OPENAI_RESOURCE.openai.azure.com/
+AZURE_OPENAI_KEY=your_openai_api_key_here
+AZURE_OPENAI_DEPLOYMENT=gpt-4o   # your deployment name
+
+# ── Azure Speech Services ─────────────────────────────────────────────────────
+# Enable: Azure Portal → Create Resource → Speech
+# Free tier: 5 hours/month transcription (enough for testing)
+# Found in: Azure Portal → Speech resource → Keys and Endpoint
+AZURE_SPEECH_KEY=your_speech_key_here
+AZURE_SPEECH_REGION=uksouth   # e.g. eastus, uksouth, westeurope
