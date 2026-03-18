@@ -1,6 +1,8 @@
 # Contract Processing Pipeline
 # Multi-modal → Canonical Schema
-
+raw_results: list[dict] = handler(...)
+for r in raw_results:
+    log.info(f"RAW FIELDS FROM {r.get('_source')}: {[k for k in r.keys() if not k.startswith('_')]}")
 ## Architecture
 
 ```
