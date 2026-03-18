@@ -1,37 +1,112 @@
 """
 pdf_handler.py
 ──────────────
-Handles PDF inputs through the Azure Content Understanding pipeline.
-
-Flow:
-  1. Upload PDF to Azure Blob Storage (staging container)
-  2. Detect contract type (NDA / SOW / deal-intake) if not specified
-  3. Run deal-intake analyzer (always — extracts parties, dates, metadata)
-  4. Run NDA or SOW analyzer based on contract type
-  5. Return list of raw extraction dicts for mapping
-
-Your 3 CU analyzers are already built — this file just calls them.
+Handles PDF inputs through Azure Content Understanding.
+Uses the exact client pattern from Azure's own code example.
+API version: 2025-05-01-preview
 """
 
 import logging
+import os
+import time
+import requests
+from pathlib import Path
 from typing import Literal
-
-from config.azure_clients import get_blob_client, get_cu_client
-from normalization.blob_uploader import upload_to_blob
+from collections.abc import Callable
 
 log = logging.getLogger(__name__)
 
-# ── CU Analyzer IDs ───────────────────────────────────────────────────────────
-# TODO: Replace these with your actual CU analyzer IDs from Azure portal
+# ── Your 3 analyzer IDs ───────────────────────────────────────────────────────
 CU_ANALYZER_IDS = {
-    "deal_intake": "YOUR_DEAL_INTAKE_ANALYZER_ID",
-    "nda":         "YOUR_NDA_ANALYZER_ID",
-    "sow":         "YOUR_SOW_ANALYZER_ID",
+    "deal_intake": "core-deal-intake-analyzer",
+    "nda":         "nda-analyzer-extractor",
+    "sow":         "sow-analyzer-extractor",
 }
 
-# Azure Blob container used for staging files before CU analysis
 BLOB_STAGING_CONTAINER = "contract-staging"
+API_VERSION = "2025-05-01-preview"
 
+
+# ── Azure CU Client (copied exactly from Azure's sample) ─────────────────────
+
+class AzureContentUnderstandingClient:
+    def __init__(self, endpoint: str, api_version: str, subscription_key: str):
+        self._endpoint = endpoint.rstrip("/")
+        self._api_version = api_version
+        self._headers = {
+            "Ocp-Apim-Subscription-Key": subscription_key,
+            "x-ms-useragent": "contract-pipeline",
+        }
+        self._logger = logging.getLogger(__name__)
+
+    def begin_analyze(self, analyzer_id: str, file_location: str):
+        """Submit file or URL for analysis."""
+        if Path(file_location).exists():
+            # Local file — send as raw bytes
+            with open(file_location, "rb") as f:
+                data = f.read()
+            headers = {"Content-Type": "application/octet-stream"}
+            headers.update(self._headers)
+            response = requests.post(
+                url=self._get_analyze_url(analyzer_id),
+                headers=headers,
+                data=data,
+            )
+        elif file_location.startswith("http"):
+            # URL (blob SAS URL) — send as JSON
+            headers = {"Content-Type": "application/json"}
+            headers.update(self._headers)
+            response = requests.post(
+                url=self._get_analyze_url(analyzer_id),
+                headers=headers,
+                json={"url": file_location},
+            )
+        else:
+            raise ValueError(f"Invalid file location: {file_location}")
+
+        response.raise_for_status()
+        self._logger.info(f"[CU] Submitted {file_location} to {analyzer_id}")
+        return response
+
+    def poll_result(self, response, timeout_seconds=120, polling_interval_seconds=2):
+        """Poll until job completes. Returns full result dict."""
+        operation_location = response.headers.get("operation-location", "")
+        if not operation_location:
+            raise ValueError("No operation-location in response headers")
+
+        headers = {"Content-Type": "application/json"}
+        headers.update(self._headers)
+
+        start_time = time.time()
+        while True:
+            elapsed = time.time() - start_time
+            if elapsed > timeout_seconds:
+                raise TimeoutError(f"CU job timed out after {timeout_seconds}s")
+
+            poll_response = requests.get(operation_location, headers=self._headers)
+            poll_response.raise_for_status()
+            result = poll_response.json()
+            status = result.get("status", "").lower()
+
+            if status == "succeeded":
+                self._logger.info(f"[CU] Completed in {elapsed:.1f}s")
+                return result
+            elif status == "failed":
+                raise RuntimeError(f"[CU] Job failed: {result}")
+            else:
+                self._logger.info(f"[CU] In progress... ({elapsed:.0f}s)")
+
+            time.sleep(polling_interval_seconds)
+
+    def _get_analyze_url(self, analyzer_id: str) -> str:
+        return (
+            f"{self._endpoint}/contentunderstanding/analyzers"
+            f"/{analyzer_id}:analyze"
+            f"?api-version={self._api_version}&stringEncoding=utf16"
+        )
+
+
+# ── Handler entrypoint ────────────────────────────────────────────────────────
 
 def handle_pdf(
     file_path: str,
@@ -40,141 +115,90 @@ def handle_pdf(
 ) -> list[dict]:
     """
     Process a PDF through the CU analyzer pipeline.
-
-    Args:
-        file_path:      Local path to the PDF file.
-        contract_type:  "nda" | "sow" | "auto" (detect from content).
-        upload_to_blob: Upload to Blob Storage before CU processing.
-
-    Returns:
-        List of raw extraction dicts, one per analyzer run.
-        Each dict has a "_source" key indicating which analyzer produced it.
+    Returns list of raw extraction dicts, one per analyzer run.
     """
     log.info(f"[PDF Handler] Processing: {file_path}")
 
-    # ── Step 1: Upload to Blob Storage ────────────────────────────────────────
+    endpoint = os.getenv("AZURE_CU_ENDPOINT")
+    key = os.getenv("AZURE_CU_KEY")
+
+    if not endpoint or not key:
+        raise EnvironmentError("AZURE_CU_ENDPOINT and AZURE_CU_KEY must be set in .env")
+
+    client = AzureContentUnderstandingClient(endpoint, API_VERSION, key)
+
+    # Upload to blob if requested, otherwise send local file directly
     if upload_to_blob:
-        blob_url = upload_to_blob(file_path, container=BLOB_STAGING_CONTAINER)
-        log.info(f"[PDF Handler] Uploaded to blob: {blob_url}")
+        from normalization.blob_uploader import upload_to_blob as do_upload
+        file_location = do_upload(file_path, container=BLOB_STAGING_CONTAINER)
+        log.info(f"[PDF Handler] Uploaded to blob: {file_location}")
     else:
-        # TODO: If not uploading, CU still needs a URL — use local file URL or SAS token
-        blob_url = file_path
+        file_location = file_path  # send local file directly — works too
 
-    # ── Step 2: Always run deal-intake analyzer ───────────────────────────────
     results = []
-    deal_intake_result = run_cu_analyzer(
-        analyzer_id=CU_ANALYZER_IDS["deal_intake"],
-        document_url=blob_url,
-        source_label="deal_intake",
-    )
-    results.append(deal_intake_result)
 
-    # ── Step 3: Detect contract type if auto ─────────────────────────────────
+    # Always run deal-intake first
+    deal_result = run_cu_analyzer(client, CU_ANALYZER_IDS["deal_intake"], file_location, "deal_intake")
+    results.append(deal_result)
+
+    # Auto-detect contract type if needed
     if contract_type == "auto":
-        contract_type = _detect_contract_type(deal_intake_result)
-        log.info(f"[PDF Handler] Auto-detected contract type: {contract_type}")
+        contract_type = _detect_contract_type(deal_result)
+        log.info(f"[PDF Handler] Detected type: {contract_type}")
 
-    # ── Step 4: Run domain-specific analyzer (NDA or SOW) ────────────────────
+    # Run domain analyzer
     if contract_type in ("nda", "sow"):
-        domain_result = run_cu_analyzer(
-            analyzer_id=CU_ANALYZER_IDS[contract_type],
-            document_url=blob_url,
-            source_label=contract_type,
-        )
+        domain_result = run_cu_analyzer(client, CU_ANALYZER_IDS[contract_type], file_location, contract_type)
         results.append(domain_result)
-    else:
-        log.warning(f"[PDF Handler] Could not determine contract type — skipping domain analyzer")
 
     return results
 
 
-def run_cu_analyzer(analyzer_id: str, document_url: str, source_label: str) -> dict:
-    """
-    Call a single Azure Content Understanding analyzer.
-
-    Args:
-        analyzer_id:   CU analyzer ID (from Azure portal).
-        document_url:  Blob Storage URL (with SAS token) or public URL.
-        source_label:  Label for this result ("deal_intake", "nda", "sow").
-
-    Returns:
-        Raw extraction dict with "_source" and "_confidence" keys added.
-
-    TODO:
-        - Implement actual CU API call using azure-ai-documentintelligence SDK
-          or direct REST call to your CU endpoint
-        - Handle async polling (CU jobs are async — submit → poll → retrieve)
-        - Parse CU response format into flat field dict
-    """
-    cu_client = get_cu_client()
-
-    # TODO: Replace this block with actual CU SDK call
-    # Example structure (adjust to your CU SDK version):
-    #
-    #   poller = cu_client.begin_analyze_document(
-    #       model_id=analyzer_id,
-    #       analyze_request={"url": document_url},
-    #   )
-    #   result = poller.result()
-    #   fields = result.documents[0].fields
-    #   extracted = {k: v.content for k, v in fields.items()}
-    #
-    # For now, return a stub so the rest of the pipeline can be tested:
-    log.warning(f"[CU] Stub response for analyzer '{analyzer_id}' — replace with real API call")
-
-    extracted = _stub_extraction(source_label)
+def run_cu_analyzer(client, analyzer_id: str, file_location: str, source_label: str) -> dict:
+    """Submit to CU, poll, parse result."""
+    response = client.begin_analyze(analyzer_id, file_location)
+    result = client.poll_result(response)
+    extracted = _parse_cu_result(result, source_label)
     extracted["_source"] = source_label
-    extracted["_confidence"] = 0.0   # TODO: pull from CU result confidence scores
     extracted["_analyzerUsed"] = analyzer_id
-    extracted["_documentUrl"] = document_url
+    return extracted
+
+
+def _parse_cu_result(result: dict, source_label: str) -> dict:
+    """Parse CU response into flat field dict."""
+    extracted = {"_confidence": 0.0}
+
+    try:
+        contents = result.get("result", {}).get("contents", [])
+        if not contents:
+            log.warning(f"[CU] No contents in result for {source_label}")
+            return extracted
+
+        fields = contents[0].get("fields", {})
+        for field_name, field_data in fields.items():
+            value = (
+                field_data.get("valueString")
+                or field_data.get("valueNumber")
+                or field_data.get("valueArray")
+                or field_data.get("valueObject")
+                or field_data.get("content")
+            )
+            if value is not None:
+                extracted[field_name] = value
+            confidence = field_data.get("confidence", 0.0)
+            extracted["_confidence"] = max(extracted["_confidence"], confidence)
+
+    except Exception as e:
+        log.error(f"[CU] Failed to parse result: {e}")
 
     return extracted
 
 
 def _detect_contract_type(deal_intake_result: dict) -> Literal["nda", "sow", "unknown"]:
-    """
-    Infer contract type from deal-intake analyzer output.
-
-    TODO: Implement proper detection logic. Options:
-    - Check a "contractType" field if your deal-intake analyzer extracts it
-    - Keyword scan on extracted text
-    - Use GPT-4o to classify
-    """
-    # Placeholder: check if deal_intake extracted a contractType field
-    contract_type = deal_intake_result.get("contractType", "").lower()
+    """Infer contract type from deal-intake output."""
+    contract_type = str(deal_intake_result.get("contractType", "")).lower()
     if "nda" in contract_type or "confidential" in contract_type:
         return "nda"
-    if "sow" in contract_type or "statement of work" in contract_type or "services" in contract_type:
+    if "sow" in contract_type or "statement" in contract_type or "services" in contract_type:
         return "sow"
     return "unknown"
-
-
-def _stub_extraction(source_label: str) -> dict:
-    """
-    Placeholder extraction results for testing pipeline flow
-    before real CU API calls are wired up.
-    Remove this once real CU calls are implemented.
-    """
-    stubs = {
-        "deal_intake": {
-            "clientName": "Acme Corp",
-            "vendorName": "TechVendor Ltd",
-            "startDate": "2025-01-01",
-            "endDate": "2026-01-01",
-            "dealValue": "500000",
-            "contractType": "NDA",
-        },
-        "nda": {
-            "confidentialityTerm": "2 years",
-            "governingLaw": "England and Wales",
-            "obligations": ["maintain confidentiality", "limit disclosure"],
-            "exceptions": ["publicly known information", "required by law"],
-        },
-        "sow": {
-            "scopeOfWork": "Software development and integration services",
-            "deliverables": ["API", "Documentation", "Test Suite"],
-            "milestones": ["M1: Design", "M2: Build", "M3: Deploy"],
-            "paymentTerms": "Net 30",
-        },
-    }
-    return stubs.get(source_label, {})
