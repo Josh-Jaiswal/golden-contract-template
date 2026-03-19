@@ -1,3 +1,16 @@
+
+raw_results: list[dict] = handler(
+    file_path=str(path),
+    contract_type=contract_type,
+    upload_to_blob=upload_to_blob,
+)
+# TEMP DEBUG
+for r in raw_results:
+    print(f"\n=== RAW FIELDS FROM {r.get('_source')} ===")
+    for k, v in r.items():
+        if not k.startswith('_'):
+            print(f"  {k}: {v}")
+
 # Contract Processing Pipeline
 # Multi-modal → Canonical Schema
 raw_results: list[dict] = handler(...)
