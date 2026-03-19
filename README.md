@@ -1,120 +1,131 @@
+Now I have everything I need. Two problems are clear:
 
-raw_results: list[dict] = handler(
-    file_path=str(path),
-    contract_type=contract_type,
-    upload_to_blob=upload_to_blob,
-)
-# TEMP DEBUG
-for r in raw_results:
-    print(f"\n=== RAW FIELDS FROM {r.get('_source')} ===")
-    for k, v in r.items():
-        if not k.startswith('_'):
-            print(f"  {k}: {v}")
+1. **`_source` is `None`** — the source label isn't being passed through `_parse_cu_result` correctly
+2. **Field names are now known** — I can write the complete mapping matrix
 
-# Contract Processing Pipeline
-# Multi-modal → Canonical Schema
-raw_results: list[dict] = handler(...)
-for r in raw_results:
-    log.info(f"RAW FIELDS FROM {r.get('_source')}: {[k for k in r.keys() if not k.startswith('_')]}")
-## Architecture
+---
 
-```
-Input (PDF / DOCX / Email / Audio)
-         │
-         ▼
-┌─────────────────────────────────────┐
-│       Modality Normalization        │
-│                                     │
-│  PDF  ──────────────────► CU ────┐  │
-│  DOCX ──► convert to PDF ► CU    │  │
-│  Email ──► parse text ──► GPT-4o─┤  │
-│  Audio ──► Speech ──────► GPT-4o─┘  │
-└─────────────────────────────────────┘
-         │
-         ▼
-┌─────────────────────────────────────┐
-│         map_to_canonical.py         │
-│    (applies mapping-matrix.yaml)    │
-└─────────────────────────────────────┘
-         │
-         ▼
-┌─────────────────────────────────────┐
-│           merge_engine.py           │
-│   (applies precedence-rules.yaml)   │
-└─────────────────────────────────────┘
-         │
-         ▼
-┌─────────────────────────────────────┐
-│     contract-package.schema.json    │
-│      (validated canonical output)   │
-└─────────────────────────────────────┘
+## Fix 1 — `_source` is None
+
+In `pdf_handler.py`, find `_parse_cu_result()`. The issue is it strips the `_source` before parsing. Check `run_cu_analyzer()` — make sure it sets `_source` **after** calling `_parse_cu_result`:
+
+```python
+def run_cu_analyzer(client, analyzer_id: str, file_location: str, source_label: str) -> dict:
+    response = client.begin_analyze(analyzer_id, file_location)
+    result = client.poll_result(response)
+    extracted = _parse_cu_result(result, source_label)
+    extracted["_source"] = source_label  # ← confirm this line exists
+    extracted["_analyzerUsed"] = analyzer_id
+    return extracted
 ```
 
-## Quick Start
+---
 
-```bash
-# 1. Copy and fill in env vars
-cp .env.example .env
+## Fix 2 — Replace your entire `mapping-matrix.yaml`
 
-# 2. Install dependencies
-pip install -r requirements.txt
+Based on the exact field names CU returned, here is the complete mapping:
 
-# 3. Run the pipeline (stub mode — no Azure calls yet)
-python orchestration/functions/run_pipeline.py --input sample.pdf --type nda
+```yaml
+# canonical/mapping-matrix.yaml
+mappings:
 
-# 4. Wire up Azure services in config/azure_clients.py (see TODOs)
+  # ── Deal Intake Analyzer ──────────────────────────────────────────────────
+  - canonicalPath: parties.client.name
+    sourceAnalyzer: deal_intake
+    sourceField: customerLegalName
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: parties.vendor.name
+    sourceAnalyzer: deal_intake
+    sourceField: vendorLegalName
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: commercials.totalValue
+    sourceAnalyzer: deal_intake
+    sourceField: setupFee
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: commercials.currency
+    sourceAnalyzer: deal_intake
+    sourceField: currency
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: commercials.paymentTerms
+    sourceAnalyzer: deal_intake
+    sourceField: invoicingTerms
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: scope.description
+    sourceAnalyzer: deal_intake
+    sourceField: sowObjective
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: legal.governingLaw
+    sourceAnalyzer: deal_intake
+    sourceField: governingLaw
+    transform: as_is
+    precedence: 4
+
+  - canonicalPath: confidentiality.term
+    sourceAnalyzer: deal_intake
+    sourceField: confidentialityTermYears
+    transform: as_is
+    precedence: 4
+
+  # ── NDA Analyzer ─────────────────────────────────────────────────────────
+  - canonicalPath: parties.client.name
+    sourceAnalyzer: nda
+    sourceField: disclosingParty
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: parties.vendor.name
+    sourceAnalyzer: nda
+    sourceField: receivingParty
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: confidentiality.term
+    sourceAnalyzer: nda
+    sourceField: confidentialityTermYears
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: confidentiality.exceptions
+    sourceAnalyzer: nda
+    sourceField: exclusionsFromConfidentialInfo
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: legal.governingLaw
+    sourceAnalyzer: nda
+    sourceField: governingLaw
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: legal.jurisdiction
+    sourceAnalyzer: nda
+    sourceField: dataResidencyRequirements
+    transform: as_is
+    precedence: 3
 ```
 
-## File Structure
+---
 
+## Fix 3 — Update `map_to_canonical.py` to handle `_source` being None
+
+In `map_to_canonical()`, the source lookup fails when `_source` is None. Add a fallback:
+
+```python
+source = raw_result.get("_source") or raw_result.get("_analyzerUsed", "unknown")
 ```
-contract-pipeline/
-├── orchestration/functions/
-│   ├── run_pipeline.py        ← MAIN ENTRY POINT
-│   ├── map_to_canonical.py    ← applies mapping-matrix.yaml
-│   └── merge_engine.py        ← applies precedence-rules.yaml
-│
-├── normalization/
-│   ├── pdf_handler.py         ← PDF → CU analyzers
-│   ├── docx_handler.py        ← DOCX → PDF → CU
-│   ├── email_handler.py       ← Email → GPT-4o
-│   ├── audio_handler.py       ← Audio → Speech → GPT-4o
-│   └── blob_uploader.py       ← uploads to Azure Blob Storage
-│
-├── canonical/
-│   ├── contract-package.schema.json   ← your existing schema ✅
-│   ├── mapping-matrix.yaml            ← your existing mappings ✅
-│   └── precedence-rules.yaml          ← your existing rules ✅
-│
-├── analyzers/                 ← your 3 CU analyzers ✅
-│   ├── deal-intake/
-│   ├── nda/
-│   └── sow/
-│
-├── validators/
-│   └── schema_validator.py    ← validates final output
-│
-├── config/
-│   └── azure_clients.py       ← all Azure service clients
-│
-├── tests/                     ← wire up your golden test cases
-├── .env.example               ← copy to .env and fill in
-└── requirements.txt
-```
-python orchestration/functions-or-container-app/run_pipeline.py --input orchestration/functions-or-container-app/run_pipeline.py --type nda --no-blob
-## What Needs Wiring (TODOs)
 
-| File | TODO | Azure Service |
-|------|------|---------------|
-| `pdf_handler.py` | Replace `_stub_extraction()` with real CU call | CU ✅ |
-| `email_handler.py` | Wire `_extract_with_llm()` | Azure OpenAI ❌ |
-| `audio_handler.py` | Wire `transcribe_audio()` | Speech Services ❌ |
-| `azure_clients.py` | Uncomment SDK clients as services are provisioned | — |
+---
 
-## Recommended Build Order
-
-1. ✅ Confirm stubs run: `python run_pipeline.py --input test.pdf`
-2. 🔧 Wire CU call in `pdf_handler.py` (you have CU credentials)
-3. 🔧 Provision Azure OpenAI → wire email + audio LLM extraction
-4. 🔧 Provision Speech Services → wire `_transcribe_realtime()`
-5. 🔧 Build `generation/` layer for NDA/SOW template output
+Make all three changes, run again, and your output should show `parties.client.name: Contoso India Pvt. Ltd.`, `parties.vendor.name: Fabrikam Solutions Pvt. Ltd.`, `confidentiality.term: 3`, `scope.description`, `commercials` all populated. The pipeline will be functionally complete for PDF inputs.
