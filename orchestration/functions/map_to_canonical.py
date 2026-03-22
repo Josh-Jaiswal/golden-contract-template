@@ -1,55 +1,78 @@
 """
 map_to_canonical.py
 ────────────────────
-Translates raw analyzer output (from CU or LLM) into the
-canonical schema structure defined in contract-package.schema.json.
-
+Translates raw analyzer output into the canonical schema.
 Uses mapping-matrix.yaml as the translation ruleset.
-
-The mapping matrix format (mapping-matrix.yaml) should look like:
-    mappings:
-      deal_intake:
-        clientName:      parties.client.name
-        vendorName:      parties.vendor.name
-        startDate:       dates.effectiveDate
-        endDate:         dates.expirationDate
-        dealValue:       commercials.totalValue
-      nda:
-        confidentialityTerm:  confidentiality.term
-        governingLaw:         legal.governingLaw
-        obligations:          confidentiality.obligations
-        exceptions:           confidentiality.exceptions
-      sow:
-        scopeOfWork:     scope.description
-        deliverables:    scope.deliverables
-        milestones:      scope.milestones
-        paymentTerms:    commercials.paymentTerms
 """
-
-import yaml
-import logging
+import yaml, logging
 from pathlib import Path
 from typing import Any
 
 log = logging.getLogger(__name__)
-
-# Path to mapping-matrix.yaml (relative to project root)
 MAPPING_MATRIX_PATH = Path(__file__).parent.parent.parent / "canonical" / "mapping-matrix.yaml"
 
 
+def apply_transform(value: Any, transform: str) -> Any:
+    if transform == "as_is" or not transform:
+        return value
+
+    if transform == "parse_party_client":
+        for segment in str(value).split("||"):
+            if "ROLE::client" in segment:
+                for part in segment.split("|"):
+                    if part.strip().startswith("PARTY::"):
+                        return part.strip().replace("PARTY::", "").strip()
+        return value
+
+    if transform == "parse_party_vendor":
+        for segment in str(value).split("||"):
+            if "ROLE::vendor" in segment:
+                for part in segment.split("|"):
+                    if part.strip().startswith("PARTY::"):
+                        return part.strip().replace("PARTY::", "").strip()
+        return value
+
+    if transform == "parse_deliverables_composite":
+        if isinstance(value, str):
+            items = []
+            for line in value.split("\n"):
+                if line.strip().startswith("DELIV::"):
+                    deliv = line.strip().replace("DELIV::", "").strip()
+                    if deliv and deliv.lower() != "null":
+                        items.append(deliv)
+            return items if items else value
+        return value
+
+    if transform == "parse_signers":
+        if not value or not str(value).strip():
+            return []
+        signers = []
+        for block in str(value).split("\n\n"):
+            signer = {}
+            for line in block.strip().split("\n"):
+                line = line.strip()
+                if line.startswith("SIGNER::"):
+                    signer["name"] = line.replace("SIGNER::", "").strip()
+                elif line.startswith("PARTY::"):
+                    signer["party"] = line.replace("PARTY::", "").strip()
+                elif line.startswith("TITLE::"):
+                    signer["title"] = line.replace("TITLE::", "").strip()
+                elif line.startswith("DATE::"):
+                    signer["date"] = line.replace("DATE::", "").strip()
+            if signer.get("name"):
+                signers.append(signer)
+        return signers
+
+    log.warning(f"[Mapper] Unknown transform '{transform}' — using as_is")
+    return value
+
+
 def load_mapping_matrix() -> dict:
-    """Load and parse the mapping-matrix.yaml file."""
-    # TODO: Add caching so this isn't re-read on every call
     with open(MAPPING_MATRIX_PATH, "r") as f:
         return yaml.safe_load(f)
 
 
 def set_nested(target: dict, dotted_key: str, value: Any) -> None:
-    """
-    Write a value into a nested dict using a dot-notation key.
-    e.g. set_nested(d, "parties.client.name", "Acme Corp")
-         → d["parties"]["client"]["name"] = "Acme Corp"
-    """
     keys = dotted_key.split(".")
     cursor = target
     for key in keys[:-1]:
@@ -58,10 +81,6 @@ def set_nested(target: dict, dotted_key: str, value: Any) -> None:
 
 
 def get_nested(source: dict, dotted_key: str, default=None) -> Any:
-    """
-    Read a value from a nested dict using dot-notation key.
-    Returns default if any key in the chain is missing.
-    """
     keys = dotted_key.split(".")
     cursor = source
     for key in keys:
@@ -72,99 +91,119 @@ def get_nested(source: dict, dotted_key: str, default=None) -> Any:
 
 
 def map_to_canonical(raw_result: dict) -> dict:
-    """
-    Apply the mapping matrix to translate raw analyzer output
-    into a canonical schema-conformant dict.
-
-    Args:
-        raw_result: Raw extraction dict. Must contain a "_source" key
-                    indicating which analyzer produced it:
-                    "deal_intake" | "nda" | "sow" | "llm_email" | "llm_audio"
-
-    Returns:
-        A partial canonical package dict with only the fields
-        this analyzer is responsible for populated.
-    """
     matrix = load_mapping_matrix()
-    source = raw_result.get("_source", "unknown")
-    mappings = matrix.get("mappings", {})
+    source = raw_result.get("_source") or raw_result.get("_analyzerUsed", "unknown")
+    mappings = matrix.get("mappings", [])
 
-    # Find the right mapping section for this source
-    # LLM-extracted sources use the same field names as CU analyzers
-    source_key = source.replace("llm_", "")  # "llm_email_nda" → "email_nda" → falls back
-    analyzer_mappings = mappings.get(source_key) or mappings.get(source, {})
-
-    if not analyzer_mappings:
-        log.warning(f"[Mapper] No mapping found for source '{source}' — passing through raw")
+    if not isinstance(mappings, list):
+        log.warning("[Mapper] Unexpected mapping format — expected list")
         return {"_raw": raw_result, "_source": source, "_mapped": False}
 
     canonical = {
         "_source": source,
         "_mapped": True,
         "_confidence": raw_result.get("_confidence", 0.0),
+        "_rule_precedence": {},
     }
 
-    for raw_field, canonical_path in analyzer_mappings.items():
-        value = raw_result.get(raw_field)
-        if value is not None:
-            set_nested(canonical, canonical_path, value)
-            log.debug(f"[Mapper] {raw_field} → {canonical_path} = {value!r}")
-        else:
-            log.debug(f"[Mapper] {raw_field} missing in raw result — skipping")
+    for rule in mappings:
+        if rule.get("sourceAnalyzer") != source:
+            continue
+        source_field   = rule.get("sourceField")
+        canonical_path = rule.get("canonicalPath")
+        transform      = rule.get("transform", "as_is")
+        precedence     = rule.get("precedence", 0)
 
-    # TODO: Apply any transformation rules from mapping-matrix.yaml
-    # e.g. date normalization, currency formatting, name casing
+        if not source_field or not canonical_path:
+            continue
+        value = raw_result.get(source_field)
+        if value is None:
+            continue
 
-    # TODO: Handle list fields (deliverables, obligations) — these need
-    # special treatment if the analyzer returns them as a string
+        value = apply_transform(value, transform)
+        set_nested(canonical, canonical_path, value)
+        canonical["_rule_precedence"][canonical_path] = precedence
+        log.debug(f"[Mapper] {source_field} → {canonical_path}")
 
     return canonical
 
 
 def build_empty_canonical() -> dict:
-    """
-    Return a fully-structured empty canonical package.
-    Matches contract-package.schema.json structure.
-    Used as the base dict that merge_engine populates.
-    """
     return {
         "parties": {
-            "client": {"name": "", "signatories": []},
-            "vendor": {"name": "", "signatories": []},
+            "client":  {"name": "", "signatories": []},
+            "vendor":  {"name": "", "signatories": []},
+            "ndaType": "",
         },
         "dates": {
-            "effectiveDate": "",
+            "effectiveDate":  "",
             "expirationDate": "",
-            "executionDate": "",
+            "executionDate":  "",
         },
         "scope": {
-            "description": "",
-            "deliverables": [],
-            "milestones": [],
+            "description":   "",
+            "deliverables":  [],
+            "outOfScope":    [],
+            "milestones":    [],
+            "sowReferenceId": "",
+            "locationAndTravel": "",
         },
         "confidentiality": {
-            "term": "",
+            "term":        "",
             "obligations": [],
-            "exceptions": [],
+            "exceptions":  [],
         },
         "commercials": {
-            "totalValue": "",
+            "totalValue":   "",
             "paymentTerms": "",
-            "currency": "",
+            "currency":     "",
+            "pricingModel": "",
+            "taxes":        "",
+            "expenses":     "",
+            "invoicing":    "",
+        },
+        "security": {
+            "requirements":          "",
+            "dataResidency":         "",
+            "complianceStandards":   "",
+            "personalDataProcessing":"",
+            "privacyRequirements":   "",
         },
         "legal": {
-            "governingLaw": "",
-            "jurisdiction": "",
-            "disputeResolution": "",
+            "governingLaw":            "",
+            "jurisdiction":            "",
+            "disputeResolution":       "",
+            "liabilityCap":            "",
+            "ipOwnership":             "",
+            "warranties":              "",
+            "indemnities":             "",
+            "terminationForConvenience":"",
+            "terminationForCause":     "",
+            "injunctiveRelief":        "",
+            "licenseGrants":           "",
+            "thirdPartySoftware":      "",
+            "msaReference":            "",
+            "serviceLevels":           "",
         },
-        "risks": [],
-        "missingFields": [],
-        "conflicts": [],
-        "provenance": [],
+        "projectGovernance": {
+            "acceptanceCriteria":  "",
+            "acceptanceTimeline":  "",
+            "changeControl":       "",
+            "issueEscalation":     "",
+            "governanceModel":     "",
+            "keyPersonnel":        "",
+            "dependencies":        "",
+            "assumptions":         "",
+            "constraints":         "",
+        },
+        "risks":        [],
+        "missingFields":[],
+        "conflicts":    [],
+        "provenance":   [],
         "review": {
-            "status": "needs_review",
+            "status":       "needs_review",
             "reviewReason": [],
-            "reviewedBy": "",
-            "reviewedAt": "",
+            "reviewedBy":   "",
+            "reviewedAt":   "",
         },
     }
