@@ -1,210 +1,116 @@
-# ── SOW Analyzer ─────────────────────────────────────────────────────────
-  - canonicalPath: parties.client.name
-    sourceAnalyzer: sow
-    sourceField: parties
-    transform: as_is
-    precedence: 4
-
-  - canonicalPath: dates.effectiveDate
-    sourceAnalyzer: sow
-    sourceField: effectiveDateGood result for a real SOW file. The pipeline is working correctly. Let me give you an honest read of this output:
+Good progress but two clear issues remain. Let me be direct about what's happening:
 
 ---
 
-## What worked well ✅
-- `parties.client.name` → Helios Global Manufacturing Corporation (0.754)
-- `parties.vendor.name` → Apex Digital Transformation Services Ltd. (0.754)
-- `dates.expirationDate` → extracted from SOW (0.653)
-- `scope.description` → rich summary from SOW (0.653)
-- `missingFields` → clean, no structural keys ✅
-- `review` fields no longer in missingFields ✅
-- Conflicts detected correctly between deal_intake and sow
+## Problem 1 — `scope.deliverables` is pulling from the wrong analyzer
 
----
+The deal_intake deliverables are garbage fragments because this is a **SOW document**, not a deal intake notes file. The deal-intake analyzer is trying to extract `inScope` from a formal SOW PDF and failing badly.
 
-## Issues to address
-
-**Issue 1 — `scope.deliverables` are garbage**
-
+The SOW analyzer returned the correct single deliverable:
 ```
-"Migration of source systems\" (per
-analytics segment includes Power BI workspace governance?
-Grafana dashboards or
+"10 structured sessions (6 live workshops + 4 recorded modules)"
 ```
 
-These are truncated fragments. The SOW deliverables field is a long string with `\n\n` separators — the unwrap logic is treating it as a CU array but it's actually a plain string. Fix in `_extract_derived_fields` in `pdf_handler.py`:
+But deal_intake wins because it has higher confidence (0.749 vs 0.659).
 
-```python
-# Add this to the array_fields unwrap section
-# SOW returns deliverables as a plain string with \n\n separators
-# deal_intake returns as CU array — handle both
+**Fix — lower deal_intake deliverables precedence for SOW docs**, or better, map SOW `deliverablesComposite` instead which is the structured field:
 
-def _split_string_deliverables(value) -> list:
-    """Split string deliverables into a clean list."""
-    if isinstance(value, str):
-        items = [
-            item.strip()
-            for item in value.replace("\n\n", "\n").split("\n")
-            if item.strip()
-        ]
-        return items
-    return value
-```
-
-Then in `_extract_derived_fields` add:
-
-```python
-# Split string-based deliverables (SOW returns these as plain strings)
-for field in ("deliverables", "inScopeItems", "milestones"):
-    val = extracted.get(field)
-    if isinstance(val, str) and val:
-        extracted[field] = _split_string_deliverables(val)
-```
-
-**Issue 2 — `parties.client.name` conflict with SOW**
-
-SOW returns:
-```
-PARTY::Helios Global... | ROLE::client || PARTY::Apex... | ROLE::vendor
-```
-
-This is the structured party format from the SOW schema. The conflict is expected but the SOW value is unparsed. Add a transform to `map_to_canonical.py` to parse this format:
-
-In `apply_transform()` add:
-
-```python
-if transform == "parse_party_client":
-    # Extract PARTY where ROLE::client
-    for segment in str(value).split("||"):
-        if "ROLE::client" in segment:
-            for part in segment.split("|"):
-                if part.strip().startswith("PARTY::"):
-                    return part.strip().replace("PARTY::", "").strip()
-    return value
-
-if transform == "parse_party_vendor":
-    for segment in str(value).split("||"):
-        if "ROLE::vendor" in segment:
-            for part in segment.split("|"):
-                if part.strip().startswith("PARTY::"):
-                    return part.strip().replace("PARTY::", "").strip()
-    return value
-```
-
-Then update the SOW mapping rules:
+Update `mapping-matrix.yaml` SOW deliverables rule:
 
 ```yaml
-  - canonicalPath: parties.client.name
-    sourceAnalyzer: sow
-    sourceField: parties
-    transform: parse_party_client
-    precedence: 4
-
-  - canonicalPath: parties.vendor.name
-    sourceAnalyzer: sow
-    sourceField: parties
-    transform: parse_party_vendor
-    precedence: 4
-```
-
-**Issue 3 — `commercials` all empty**
-
-The SOW has `paymentTerms`, `feesSummary`, `pricingModel` fields but they're not in your mapping yet. Add to `mapping-matrix.yaml`:
-
-```yaml
-  - canonicalPath: commercials.paymentTerms
-    sourceAnalyzer: sow
-    sourceField: paymentTerms
-    transform: as_is
-    precedence: 5
-
-  - canonicalPath: commercials.totalValue
-    sourceAnalyzer: sow
-    sourceField: feesSummary
-    transform: as_is
-    precedence: 4
-```
-
-**Issue 4 — `risks` empty**
-
-SOW has a `risks` field. Add to mapping:
-
-```yaml
-  - canonicalPath: risks
-    sourceAnalyzer: sow
-    sourceField: risks
-    transform: as_is
-    precedence: 4
-```
-
----
-
-## `map_to_canonical.py` needs to call transforms
-
-Right now `apply_transform()` exists but `map_to_canonical()` never calls it. Find this block in `map_to_canonical()`:
-
-```python
-value = raw_result.get(source_field)
-if value is None:
-    continue
-set_nested(canonical, canonical_path, value)
-```
-
-Replace with:
-
-```python
-value = raw_result.get(source_field)
-if value is None:
-    continue
-transform = rule.get("transform", "as_is")
-value = apply_transform(value, transform)
-set_nested(canonical, canonical_path, value)
-```
-
----
-
-Make these 4 fixes, run the SOW file again, and the output will be significantly cleaner. The core pipeline is solid — this is just refinement at this point.
-    transform: as_is
-    precedence: 5
-
-  - canonicalPath: dates.expirationDate
-    sourceAnalyzer: sow
-    sourceField: term
-    transform: as_is
-    precedence: 5
-
-  - canonicalPath: scope.description
-    sourceAnalyzer: sow
-    sourceField: scopeSummary
-    transform: as_is
-    precedence: 4
-
   - canonicalPath: scope.deliverables
     sourceAnalyzer: sow
-    sourceField: deliverables
+    sourceField: deliverablesComposite
     transform: as_is
-    precedence: 5
+    precedence: 6    # higher than deal_intake's 5
+```
 
-  - canonicalPath: scope.milestones
-    sourceAnalyzer: sow
-    sourceField: milestones
+And lower deal_intake deliverables precedence:
+
+```yaml
+  - canonicalPath: scope.deliverables
+    sourceAnalyzer: deal_intake
+    sourceField: inScope
     transform: as_is
-    precedence: 5
+    precedence: 3    # was 5, now lower than SOW
+```
 
-  - canonicalPath: commercials.paymentTerms
+---
+
+## Problem 2 — `commercials.totalValue` is extracting missing clauses text
+
+```
+"1. Fixed Fee portion... 2. Estimated T&M hours... 3. Confirmation that rate card..."
+```
+
+This is the SOW analyzer's `missingRequiredClauses` output bleeding into `feesSummary`. The SOW PDF doesn't have explicit fee totals — it has a rate card instead. 
+
+**Fix — map `rateCard` instead of `feesSummary`:**
+
+```yaml
+  - canonicalPath: commercials.totalValue
     sourceAnalyzer: sow
-    sourceField: paymentTerms
+    sourceField: rateCard
     transform: as_is
     precedence: 4
+```
 
-  - canonicalPath: legal.governingLaw
-    sourceAnalyzer: sow
-    sourceField: governingLaw
-    transform: as_is
-    precedence: 3
+---
 
-  - canonicalPath: legal.disputeResolution
-    sourceAnalyzer: sow
-    sourceField: disputeResolution
+## Problem 3 — `missingFields` still has `review.*` keys
+
+Your `STRUCTURAL_KEYS` fix didn't apply. Confirm your `merge_engine.py` has exactly:
+
+```python
+STRUCTURAL_KEYS = {
+    "missingFields", "conflicts", "provenance", "risks"
+}
+```
+
+`"review"` must NOT be in that set.
+
+---
+
+## Problem 4 — `scope.deliverables` unwrap is still broken
+
+The deal_intake `inScope` field for this SOW document is returning fragments like `"Migration of source systems\" (per` — these are truncated because the SOW's missingClauses text is bleeding into the inScope field.
+
+The real fix is to **not run deal_intake's inScope mapping when the document is a pure SOW**. Add a source document type check in `handle_pdf`:
+
+```python
+# Tag results with document context
+deal_result["_docContext"] = contract_type  # will be "both" or "sow"
+```
+
+Then in `map_to_canonical` skip deal_intake deliverables mapping when context is pure SOW. But this is complex — for now the precedence fix (Problem 1) is enough.
+
+---
+
+## Make these two changes now
+
+**In `mapping-matrix.yaml`:**
+
+```yaml
+  # Deal intake deliverables — lower precedence so SOW wins
+  - canonicalPath: scope.deliverables
+    sourceAnalyzer: deal_intake
+    sourceField: inScope
     transform: as_is
-    precedence: 5
+    precedence: 3    # changed from 5
+
+  # SOW deliverables — use composite structured field, highest precedence
+  - canonicalPath: scope.deliverables
+    sourceAnalyzer: sow
+    sourceField: deliverablesComposite
+    transform: as_is
+    precedence: 6    # highest
+
+  # SOW commercials — use rateCard not feesSummary
+  - canonicalPath: commercials.totalValue
+    sourceAnalyzer: sow
+    sourceField: rateCard
+    transform: as_is
+    precedence: 4
+```
+
+Run again and the deliverables conflict should resolve to the SOW's clean structured output, and commercials will show the actual rate card instead of missing clauses text.
