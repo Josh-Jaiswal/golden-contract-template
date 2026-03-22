@@ -1,0 +1,457 @@
+# canonical/mapping-matrix.yaml
+# Complete field mapping — all CU analyzer fields to canonical schema.
+# Precedence: higher = higher priority on conflict (max 6)
+
+mappings:
+
+  # ══════════════════════════════════════════════════════════
+  # DEAL INTAKE ANALYZER (core-deal-intake-analyzer-02)
+  # ══════════════════════════════════════════════════════════
+
+  - canonicalPath: parties.client.name
+    sourceAnalyzer: deal_intake
+    sourceField: customerLegalName
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: parties.vendor.name
+    sourceAnalyzer: deal_intake
+    sourceField: vendorLegalName
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: parties.ndaType
+    sourceAnalyzer: deal_intake
+    sourceField: ndaType
+    transform: as_is
+    precedence: 4
+
+  - canonicalPath: dates.effectiveDate
+    sourceAnalyzer: deal_intake
+    sourceField: ndaTargetExecutionDate
+    transform: as_is
+    precedence: 4
+
+  - canonicalPath: scope.description
+    sourceAnalyzer: deal_intake
+    sourceField: sowObjective
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: scope.deliverables
+    sourceAnalyzer: deal_intake
+    sourceField: inScope
+    transform: as_is
+    precedence: 3
+
+  - canonicalPath: scope.outOfScope
+    sourceAnalyzer: deal_intake
+    sourceField: outOfScope
+    transform: as_is
+    precedence: 4
+
+  - canonicalPath: confidentiality.term
+    sourceAnalyzer: deal_intake
+    sourceField: confidentialityTermYears
+    transform: as_is
+    precedence: 4
+
+  - canonicalPath: commercials.totalValue
+    sourceAnalyzer: deal_intake
+    sourceField: setupFee
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: commercials.currency
+    sourceAnalyzer: deal_intake
+    sourceField: currency
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: commercials.paymentTerms
+    sourceAnalyzer: deal_intake
+    sourceField: invoicingTerms
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: commercials.pricingModel
+    sourceAnalyzer: deal_intake
+    sourceField: pricingModel
+    transform: as_is
+    precedence: 4
+
+  - canonicalPath: commercials.invoicing
+    sourceAnalyzer: deal_intake
+    sourceField: invoiceSplit
+    transform: as_is
+    precedence: 4
+
+  - canonicalPath: security.requirements
+    sourceAnalyzer: deal_intake
+    sourceField: securityRequirements
+    transform: as_is
+    precedence: 4
+
+  - canonicalPath: security.dataResidency
+    sourceAnalyzer: deal_intake
+    sourceField: dataResidency
+    transform: as_is
+    precedence: 4
+
+  - canonicalPath: legal.governingLaw
+    sourceAnalyzer: deal_intake
+    sourceField: governingLaw
+    transform: as_is
+    precedence: 4
+
+  - canonicalPath: legal.liabilityCap
+    sourceAnalyzer: deal_intake
+    sourceField: liabilityCap
+    transform: as_is
+    precedence: 4
+
+  - canonicalPath: legal.ipOwnership
+    sourceAnalyzer: deal_intake
+    sourceField: ipOwnership
+    transform: as_is
+    precedence: 4
+
+  - canonicalPath: risks
+    sourceAnalyzer: deal_intake
+    sourceField: extractedConflicts
+    transform: as_is
+    precedence: 4
+
+
+  # ══════════════════════════════════════════════════════════
+  # NDA ANALYZER (nda-analyzer-extractor)
+  # ══════════════════════════════════════════════════════════
+
+  - canonicalPath: parties.client.name
+    sourceAnalyzer: nda
+    sourceField: disclosingParty
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: parties.vendor.name
+    sourceAnalyzer: nda
+    sourceField: receivingParty
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: parties.ndaType
+    sourceAnalyzer: nda
+    sourceField: mutualOrUnilateral
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: confidentiality.term
+    sourceAnalyzer: nda
+    sourceField: confidentialityTermYears
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: confidentiality.exceptions
+    sourceAnalyzer: nda
+    sourceField: exclusionsFromConfidentialInfo
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: security.requirements
+    sourceAnalyzer: nda
+    sourceField: dataSecurityRequirements
+    transform: as_is
+    precedence: 4
+
+  - canonicalPath: security.dataResidency
+    sourceAnalyzer: nda
+    sourceField: dataResidencyRequirements
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: security.personalDataProcessing
+    sourceAnalyzer: nda
+    sourceField: personalDataProcessing
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: legal.governingLaw
+    sourceAnalyzer: nda
+    sourceField: governingLaw
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: legal.jurisdiction
+    sourceAnalyzer: nda
+    sourceField: dataResidencyRequirements
+    transform: as_is
+    precedence: 3
+
+  - canonicalPath: legal.liabilityCap
+    sourceAnalyzer: nda
+    sourceField: liabilityLimitations
+    transform: as_is
+    precedence: 4
+
+  - canonicalPath: legal.ipOwnership
+    sourceAnalyzer: nda
+    sourceField: intellectualPropertyOwnership
+    transform: as_is
+    precedence: 4
+
+
+  # ══════════════════════════════════════════════════════════
+  # SOW ANALYZER (sow-analyzer-extractor-02)
+  # ══════════════════════════════════════════════════════════
+
+  - canonicalPath: parties.client.name
+    sourceAnalyzer: sow
+    sourceField: parties
+    transform: parse_party_client
+    precedence: 4
+
+  - canonicalPath: parties.vendor.name
+    sourceAnalyzer: sow
+    sourceField: parties
+    transform: parse_party_vendor
+    precedence: 4
+
+  - canonicalPath: parties.client.signatories
+    sourceAnalyzer: sow
+    sourceField: partiesSigners
+    transform: parse_signers
+    precedence: 5
+
+  - canonicalPath: dates.effectiveDate
+    sourceAnalyzer: sow
+    sourceField: effectiveDate
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: dates.expirationDate
+    sourceAnalyzer: sow
+    sourceField: term
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: scope.description
+    sourceAnalyzer: sow
+    sourceField: scopeSummary
+    transform: as_is
+    precedence: 4
+
+  - canonicalPath: scope.deliverables
+    sourceAnalyzer: sow
+    sourceField: deliverablesComposite
+    transform: parse_deliverables_composite
+    precedence: 6
+
+  - canonicalPath: scope.outOfScope
+    sourceAnalyzer: sow
+    sourceField: outOfScopeItems
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: scope.milestones
+    sourceAnalyzer: sow
+    sourceField: milestones
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: scope.sowReferenceId
+    sourceAnalyzer: sow
+    sourceField: sowReferenceId
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: scope.locationAndTravel
+    sourceAnalyzer: sow
+    sourceField: locationAndTravel
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: commercials.totalValue
+    sourceAnalyzer: sow
+    sourceField: rateCard
+    transform: as_is
+    precedence: 4
+
+  - canonicalPath: commercials.paymentTerms
+    sourceAnalyzer: sow
+    sourceField: paymentTerms
+    transform: as_is
+    precedence: 4
+
+  - canonicalPath: commercials.pricingModel
+    sourceAnalyzer: sow
+    sourceField: pricingModel
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: commercials.taxes
+    sourceAnalyzer: sow
+    sourceField: taxesDuties
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: commercials.expenses
+    sourceAnalyzer: sow
+    sourceField: expensesPolicy
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: security.requirements
+    sourceAnalyzer: sow
+    sourceField: securityRequirements
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: security.complianceStandards
+    sourceAnalyzer: sow
+    sourceField: complianceStandards
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: security.privacyRequirements
+    sourceAnalyzer: sow
+    sourceField: privacyRequirements
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: legal.governingLaw
+    sourceAnalyzer: sow
+    sourceField: governingLaw
+    transform: as_is
+    precedence: 3
+
+  - canonicalPath: legal.disputeResolution
+    sourceAnalyzer: sow
+    sourceField: disputeResolution
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: legal.liabilityCap
+    sourceAnalyzer: sow
+    sourceField: limitationOfLiability
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: legal.ipOwnership
+    sourceAnalyzer: sow
+    sourceField: ipOwnership
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: legal.warranties
+    sourceAnalyzer: sow
+    sourceField: warranties
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: legal.indemnities
+    sourceAnalyzer: sow
+    sourceField: indemnities
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: legal.terminationForConvenience
+    sourceAnalyzer: sow
+    sourceField: terminationForConvenience
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: legal.terminationForCause
+    sourceAnalyzer: sow
+    sourceField: terminationForCause
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: legal.injunctiveRelief
+    sourceAnalyzer: sow
+    sourceField: injunctiveRelief
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: legal.licenseGrants
+    sourceAnalyzer: sow
+    sourceField: licenseGrants
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: legal.thirdPartySoftware
+    sourceAnalyzer: sow
+    sourceField: thirdPartySoftware
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: legal.msaReference
+    sourceAnalyzer: sow
+    sourceField: msaReference
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: legal.serviceLevels
+    sourceAnalyzer: sow
+    sourceField: serviceLevels
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: projectGovernance.acceptanceCriteria
+    sourceAnalyzer: sow
+    sourceField: acceptanceCriteria
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: projectGovernance.acceptanceTimeline
+    sourceAnalyzer: sow
+    sourceField: acceptanceTimeline
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: projectGovernance.changeControl
+    sourceAnalyzer: sow
+    sourceField: changeControl
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: projectGovernance.issueEscalation
+    sourceAnalyzer: sow
+    sourceField: issueEscalation
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: projectGovernance.governanceModel
+    sourceAnalyzer: sow
+    sourceField: governanceModel
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: projectGovernance.keyPersonnel
+    sourceAnalyzer: sow
+    sourceField: keyPersonnel
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: projectGovernance.dependencies
+    sourceAnalyzer: sow
+    sourceField: dependencies
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: projectGovernance.assumptions
+    sourceAnalyzer: sow
+    sourceField: assumptions
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: projectGovernance.constraints
+    sourceAnalyzer: sow
+    sourceField: constraints
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: risks
+    sourceAnalyzer: sow
+    sourceField: risks
+    transform: as_is
+    precedence: 4
