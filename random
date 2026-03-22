@@ -1,194 +1,44 @@
-You're right on both counts. The milestones are in one line because the SOW analyzer returns them as a single string with everything concatenated, and a bullet list is the wrong representation for milestones anyway.
+Add it as standard clause 5.7 in `build_sow_body` in `generate_contract_pdf.py`.
 
-Milestones are time-bound deliverables — they should be in a **table** with columns for phase, description, and date. That's how every real SOW presents them.
-
----
-
-## The two problems
-
-**Problem 1 — Data:** The SOW analyzer returns milestones as one long string:
-```
-Target NDA execution: 2026-03-18 Pilot kickoff: 2026-03-24 Pilot duration: 12 weeks...
-```
-
-**Problem 2 — Display:** Even if we split it, bullet points are wrong for milestones. A table is correct.
-
----
-
-## Fix both together
-
-### Step 1 — Parse milestones into structured rows
-
-Add this function to `generate_contract_pdf.py`:
+Find the `clauses` list in `build_sow_body` — it currently ends at `5.6 Confidentiality`. Add one more tuple:
 
 ```python
-def parse_milestones(raw) -> list[dict]:
-    """
-    Parse milestone data into structured rows for table display.
-    Handles both list and string formats from CU.
-    
-    Returns list of dicts: {"milestone": str, "date": str, "notes": str}
-    """
-    if not raw:
-        return []
-
-    import re
-
-    # If already a list of dicts, return as-is
-    if isinstance(raw, list) and isinstance(raw[0], dict):
-        return raw
-
-    # Convert list to single string for parsing
-    if isinstance(raw, list):
-        text = " ".join(str(i) for i in raw)
-    else:
-        text = str(raw)
-
-    milestones = []
-
-    # Pattern 1: "Label: YYYY-MM-DD" or "Label: Month YYYY"
-    date_pattern = re.compile(
-        r'([A-Za-z][^:]{3,50}):\s*'
-        r'(\d{4}-\d{2}-\d{2}|'
-        r'(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s*\d{4})',
-        re.IGNORECASE
-    )
-    matches = date_pattern.findall(text)
-    if matches:
-        for label, date in matches:
-            milestones.append({
-                "milestone": label.strip(),
-                "date": date.strip(),
-                "notes": ""
-            })
-        return milestones
-
-    # Pattern 2: Split on common separators and clean up
-    parts = re.split(r'(?<=[a-z0-9])\s+(?=[A-Z])|[;\n]|\.\s+(?=[A-Z])', text)
-    for part in parts:
-        part = part.strip()
-        if len(part) > 5:
-            # Try to extract a date from this part
-            date_match = re.search(
-                r'(\d{4}-\d{2}-\d{2}|'
-                r'(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)'
-                r'[a-z]*\s+\d{1,2},?\s*\d{4}|\d{1,2}\s+weeks?)',
-                part, re.IGNORECASE
-            )
-            if date_match:
-                date = date_match.group(0)
-                label = part.replace(date, "").strip(" :-")
-                milestones.append({
-                    "milestone": label or part,
-                    "date": date,
-                    "notes": ""
-                })
-            else:
-                milestones.append({
-                    "milestone": part,
-                    "date": "TBD",
-                    "notes": ""
-                })
-
-    return milestones if milestones else [{"milestone": text, "date": "TBD", "notes": ""}]
+        ("5.7  Project Governance",
+         "The parties shall conduct weekly status calls throughout the project duration "
+         "to review progress, risks, and blockers. A formal mid-project review shall be "
+         "conducted at the Week 6 checkpoint to assess delivery against milestones and "
+         "agree any scope or timeline adjustments. Meeting minutes shall be circulated "
+         "within 2 business days of each session."),
 ```
 
----
+That's it. No data extraction needed — it's standard boilerplate that applies to every SOW you generate.
 
-### Step 2 — Replace bullet list with milestone table
-
-Add this function to `generate_contract_pdf.py`:
+If you want it to be dynamic (e.g. pull the actual week number from the canonical data), you can do that too. Add this before the clauses list:
 
 ```python
-def milestone_table(milestones_raw, styles: dict) -> list:
-    """
-    Render milestones as a proper table with
-    Milestone, Target Date, and Notes columns.
-    """
-    rows = parse_milestones(milestones_raw)
+# Pull checkpoint week from milestones if available
+milestone_str = str(scope.get("milestones", ""))
+checkpoint_week = "6"  # default
+import re
+week_match = re.search(r'week\s*(\d+)', milestone_str, re.IGNORECASE)
+if week_match:
+    checkpoint_week = week_match.group(1)
 
-    if not rows:
-        return [Paragraph(
-            "— Milestone schedule to be agreed and appended as Exhibit A",
-            styles["missing"])]
-
-    # Header row
-    data = [[
-        Paragraph("Milestone", styles["table_header"]),
-        Paragraph("Target Date", styles["table_header"]),
-        Paragraph("Notes", styles["table_header"]),
-    ]]
-
-    # Alternate row shading
-    row_colors = []
-    for i, row in enumerate(rows):
-        data.append([
-            Paragraph(row.get("milestone", ""), styles["table_cell"]),
-            Paragraph(row.get("date", "TBD"), styles["table_cell"]),
-            Paragraph(row.get("notes", "—") or "—", styles["table_cell"]),
-        ])
-        row_colors.append(WHITE if i % 2 == 0 else LIGHT_GREY)
-
-    col_w = PAGE_W - 2*MARGIN
-    t = Table(data, colWidths=[
-        col_w * 0.45,
-        col_w * 0.25,
-        col_w * 0.30,
-    ], repeatRows=1)
-
-    # Build row background commands
-    style_cmds = [
-        ("BACKGROUND",    (0, 0), (-1, 0), BLACK_PRIMARY),
-        ("GRID",          (0, 0), (-1, -1), 0.3, BORDER),
-        ("LEFTPADDING",   (0, 0), (-1, -1), 8),
-        ("RIGHTPADDING",  (0, 0), (-1, -1), 8),
-        ("TOPPADDING",    (0, 0), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ("VALIGN",        (0, 0), (-1, -1), "TOP"),
-        # Gold left border on milestone column
-        ("LINEBEFORE",    (0, 1), (0, -1), 2, YELLOW_ACCENT),
-    ]
-    for i, color in enumerate(row_colors):
-        style_cmds.append(("BACKGROUND", (0, i+1), (-1, i+1), color))
-
-    t.setStyle(TableStyle(style_cmds))
-    return [t]
+pilot_duration = "12 weeks"  # default
+duration_match = re.search(r'(\d+)\s*week', milestone_str, re.IGNORECASE)
+if duration_match:
+    pilot_duration = f"{duration_match.group(1)} weeks"
 ```
 
----
-
-### Step 3 — Use it in `build_sow_body`
-
-Find this block in `build_sow_body`:
+Then make the clause dynamic:
 
 ```python
-    story.append(Paragraph("2.2  Milestones", styles["h2"]))
-    milestones = scope.get("milestones", [])
-    if milestones:
-        story += bullet_list(milestones, styles)
-    else:
-        story.append(Paragraph(
-            "— Milestone schedule to be agreed and appended as Exhibit A",
-            styles["missing"]))
+        (f"5.7  Project Governance",
+         f"The parties shall conduct weekly status calls throughout the {pilot_duration} "
+         f"project duration to review progress, risks, and blockers. A formal mid-project "
+         f"review shall be conducted at the Week {checkpoint_week} checkpoint to assess "
+         f"delivery against milestones and agree any scope or timeline adjustments. "
+         f"Meeting minutes shall be circulated within 2 business days of each session."),
 ```
 
-Replace with:
-
-```python
-    story.append(Paragraph("2.2  Milestones", styles["h2"]))
-    story += milestone_table(scope.get("milestones", []), styles)
-```
-
----
-
-### Step 4 — Fix the SOW analyzer to return better milestone data
-
-This is the real long-term fix. Go to Foundry → `sow-extractor-enterprise` → Schema → `milestones` field. The current description says extract verbatim. Change it to:
-
-> Extract each milestone on a separate line in format: MILESTONE::<name> | DATE::<YYYY-MM-DD or TBD> | NOTES::<any notes>. One milestone per line. Do not concatenate multiple milestones onto one line.
-
-Retrain. Then your parser will have clean structured input and the table will be perfect every time.
-
----
-
-Run the pipeline again after these changes and your milestones section will look like a proper project schedule table instead of a wall of text.
+This way if a different SOW has a 16-week pilot with a week 8 checkpoint, it pulls those numbers automatically from the extracted data.
