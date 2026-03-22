@@ -1,44 +1,356 @@
-Add it as standard clause 5.7 in `build_sow_body` in `generate_contract_pdf.py`.
+Great questions — you're thinking like a real contract engineer now. Let me give you honest answers to each.
 
-Find the `clauses` list in `build_sow_body` — it currently ends at `5.6 Confidentiality`. Add one more tuple:
+---
 
-```python
-        ("5.7  Project Governance",
-         "The parties shall conduct weekly status calls throughout the project duration "
-         "to review progress, risks, and blockers. A formal mid-project review shall be "
-         "conducted at the Week 6 checkpoint to assess delivery against milestones and "
-         "agree any scope or timeline adjustments. Meeting minutes shall be circulated "
-         "within 2 business days of each session."),
+## Why commercial info is missing
+
+Your SOW analyzer **does** extract `pricingModel`, `taxesDuties`, `feesSummary` — but you never mapped them. Add to `mapping-matrix.yaml`:
+
+```yaml
+  - canonicalPath: commercials.pricingModel
+    sourceAnalyzer: sow
+    sourceField: pricingModel
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: commercials.taxes
+    sourceAnalyzer: sow
+    sourceField: taxesDuties
+    transform: as_is
+    precedence: 5
 ```
 
-That's it. No data extraction needed — it's standard boilerplate that applies to every SOW you generate.
+But wait — your canonical schema (`build_empty_canonical`) doesn't have `pricingModel` or `taxes` fields. You need to add them.
 
-If you want it to be dynamic (e.g. pull the actual week number from the canonical data), you can do that too. Add this before the clauses list:
+---
+
+## The bigger problem you're identifying
+
+You're right. A lot of fields your CU analyzers extract are being thrown away because:
+
+1. They're not in `build_empty_canonical` — so merge engine ignores them
+2. They're not mapped in `mapping-matrix.yaml` — so mapper ignores them
+3. They're not rendered in the PDF — so generator ignores them
+
+Here's the full gap analysis:
+
+---
+
+## Full gap audit
+
+### Fields CU extracts but pipeline drops
+
+**SOW analyzer extracts:**
+
+| Field | Currently mapped? | In canonical schema? | In PDF? |
+|---|---|---|---|
+| `pricingModel` | ❌ | ❌ | ❌ |
+| `taxesDuties` | ❌ | ❌ | ❌ |
+| `securityRequirements` | ❌ | ❌ | ❌ |
+| `complianceStandards` | ❌ | ❌ | ❌ |
+| `ipOwnership` | ❌ | ❌ | ❌ |
+| `limitationOfLiability` | ❌ | ❌ | ❌ |
+| `acceptanceCriteria` | ❌ | ❌ | ❌ |
+| `changeControl` | ❌ | ❌ | ❌ |
+| `warranties` | ❌ | ❌ | ❌ |
+| `dependencies` | ❌ | ❌ | ❌ |
+| `assumptions` | ❌ | ❌ | ❌ |
+| `keyPersonnel` | ❌ | ❌ | ❌ |
+
+**NDA analyzer extracts:**
+
+| Field | Currently mapped? | In canonical schema? | In PDF? |
+|---|---|---|---|
+| `liabilityLimitations` | ❌ | ❌ | ❌ |
+| `ipOwnership` | ❌ | ❌ | ❌ |
+| `dataSecurityRequirements` | ❌ | ❌ | ❌ |
+| `personalDataProcessing` | ❌ | ❌ | ❌ |
+| `mutualOrUnilateral` | ❌ | ❌ | ❌ |
+
+---
+
+## Standard provisions — static vs dynamic
+
+Your current 5.1-5.6 clauses are **universal boilerplate** — they apply to every SOW regardless of what was extracted. That's fine and correct for generic clauses.
+
+But these should be **dynamic** — only included if the data exists:
+
+| Clause | Should be dynamic? | Why |
+|---|---|---|
+| Limitation of Liability | ✅ Yes | Use extracted `limitationOfLiability` value |
+| IP Ownership | ✅ Yes | Use extracted `ipOwnership` preference |
+| Security & Compliance | ✅ Yes | Use extracted `securityRequirements` |
+| Acceptance Criteria | ✅ Yes | Use extracted `acceptanceCriteria` |
+| Change Control | ✅ Yes | Use extracted `changeControl` |
+| Governing Law | ✅ Yes | Already doing this in the table |
+
+---
+
+## Where security/compliance goes
+
+**Security requirements** → SOW (it's an operational requirement for the work)
+**Data security / personal data** → NDA (it's about what data gets shared confidentially)
+
+Both documents can reference security but for different reasons.
+
+---
+
+## The right fix — expand the canonical schema
+
+This is a 3-file change. Here's exactly what to do:
+
+---
+
+### Step 1 — Expand `build_empty_canonical` in `map_to_canonical.py`
+
+Add these sections:
 
 ```python
-# Pull checkpoint week from milestones if available
-milestone_str = str(scope.get("milestones", ""))
-checkpoint_week = "6"  # default
-import re
-week_match = re.search(r'week\s*(\d+)', milestone_str, re.IGNORECASE)
-if week_match:
-    checkpoint_week = week_match.group(1)
-
-pilot_duration = "12 weeks"  # default
-duration_match = re.search(r'(\d+)\s*week', milestone_str, re.IGNORECASE)
-if duration_match:
-    pilot_duration = f"{duration_match.group(1)} weeks"
+"commercials": {
+    "totalValue": "",
+    "paymentTerms": "",
+    "currency": "",
+    "pricingModel": "",    # ADD
+    "taxes": "",           # ADD
+    "expenses": "",        # ADD
+},
+"security": {              # ADD entire section
+    "requirements": "",
+    "dataResidency": "",
+    "complianceStandards": "",
+    "personalDataProcessing": "",
+},
+"legal": {
+    "governingLaw": "",
+    "jurisdiction": "",
+    "disputeResolution": "",
+    "liabilityCap": "",    # ADD
+    "ipOwnership": "",     # ADD
+    "warranties": "",      # ADD
+},
+"projectGovernance": {     # ADD entire section
+    "acceptanceCriteria": "",
+    "changeControl": "",
+    "dependencies": "",
+    "assumptions": "",
+    "keyPersonnel": "",
+},
 ```
 
-Then make the clause dynamic:
+---
+
+### Step 2 — Add mappings in `mapping-matrix.yaml`
+
+```yaml
+  # ── SOW — commercial additions ────────────────────────────────────────
+  - canonicalPath: commercials.pricingModel
+    sourceAnalyzer: sow
+    sourceField: pricingModel
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: commercials.taxes
+    sourceAnalyzer: sow
+    sourceField: taxesDuties
+    transform: as_is
+    precedence: 5
+
+  # ── SOW — security & compliance ───────────────────────────────────────
+  - canonicalPath: security.requirements
+    sourceAnalyzer: sow
+    sourceField: securityRequirements
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: security.complianceStandards
+    sourceAnalyzer: sow
+    sourceField: complianceStandards
+    transform: as_is
+    precedence: 5
+
+  # ── SOW — legal additions ─────────────────────────────────────────────
+  - canonicalPath: legal.liabilityCap
+    sourceAnalyzer: sow
+    sourceField: limitationOfLiability
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: legal.ipOwnership
+    sourceAnalyzer: sow
+    sourceField: ipOwnership
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: legal.warranties
+    sourceAnalyzer: sow
+    sourceField: warranties
+    transform: as_is
+    precedence: 5
+
+  # ── SOW — project governance ──────────────────────────────────────────
+  - canonicalPath: projectGovernance.acceptanceCriteria
+    sourceAnalyzer: sow
+    sourceField: acceptanceCriteria
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: projectGovernance.changeControl
+    sourceAnalyzer: sow
+    sourceField: changeControl
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: projectGovernance.dependencies
+    sourceAnalyzer: sow
+    sourceField: dependencies
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: projectGovernance.assumptions
+    sourceAnalyzer: sow
+    sourceField: assumptions
+    transform: as_is
+    precedence: 5
+
+  # ── NDA — additions ───────────────────────────────────────────────────
+  - canonicalPath: legal.liabilityCap
+    sourceAnalyzer: nda
+    sourceField: liabilityLimitations
+    transform: as_is
+    precedence: 4
+
+  - canonicalPath: legal.ipOwnership
+    sourceAnalyzer: nda
+    sourceField: intellectualPropertyOwnership
+    transform: as_is
+    precedence: 4
+
+  - canonicalPath: security.requirements
+    sourceAnalyzer: nda
+    sourceField: dataSecurityRequirements
+    transform: as_is
+    precedence: 4
+
+  - canonicalPath: security.dataResidency
+    sourceAnalyzer: nda
+    sourceField: dataResidencyRequirements
+    transform: as_is
+    precedence: 5
+
+  - canonicalPath: security.personalDataProcessing
+    sourceAnalyzer: nda
+    sourceField: personalDataProcessing
+    transform: as_is
+    precedence: 5
+```
+
+---
+
+### Step 3 — Add sections to `generate_contract_pdf.py`
+
+**In `build_sow_body`** add after Commercial Terms:
 
 ```python
-        (f"5.7  Project Governance",
-         f"The parties shall conduct weekly status calls throughout the {pilot_duration} "
-         f"project duration to review progress, risks, and blockers. A formal mid-project "
-         f"review shall be conducted at the Week {checkpoint_week} checkpoint to assess "
-         f"delivery against milestones and agree any scope or timeline adjustments. "
-         f"Meeting minutes shall be circulated within 2 business days of each session."),
+    # ── 4. Security & Compliance ──────────────────────────────────────────
+    security = canonical.get("security", {})
+    sec_req = security.get("requirements", "")
+    compliance = security.get("complianceStandards", "")
+
+    if sec_req or compliance:
+        story.append(Paragraph("4. SECURITY & COMPLIANCE", styles["h1"]))
+        story += section_rule(styles)
+        rows = [
+            ("Security Requirements", sec_req or None),
+            ("Compliance Standards",  compliance or None),
+            ("Data Residency",        security.get("dataResidency") or None),
+        ]
+        story.append(two_col_table(rows, styles))
+        story.append(Spacer(1, 16))
+
+    # ── 5. Legal & Jurisdiction ───────────────────────────────────────────
+    # (renumber existing section to 5)
+
+    # ── 6. Project Governance ─────────────────────────────────────────────
+    gov = canonical.get("projectGovernance", {})
+    acceptance = gov.get("acceptanceCriteria", "")
+    change = gov.get("changeControl", "")
+    deps = gov.get("dependencies", "")
+    assumptions = gov.get("assumptions", "")
+
+    if any([acceptance, change, deps, assumptions]):
+        story.append(Paragraph("6. PROJECT GOVERNANCE", styles["h1"]))
+        story += section_rule(styles)
+        if acceptance:
+            story.append(Paragraph("Acceptance Criteria", styles["h2"]))
+            story.append(Paragraph(acceptance, styles["body"]))
+            story.append(Spacer(1, 8))
+        if change:
+            story.append(Paragraph("Change Control", styles["h2"]))
+            story.append(Paragraph(change, styles["body"]))
+            story.append(Spacer(1, 8))
+        if deps:
+            story.append(Paragraph("Dependencies", styles["h2"]))
+            story += bullet_list(
+                [d.strip() for d in deps.split(";") if d.strip()],
+                styles)
+            story.append(Spacer(1, 8))
+        if assumptions:
+            story.append(Paragraph("Assumptions", styles["h2"]))
+            story += bullet_list(
+                [a.strip() for a in assumptions.split(";") if a.strip()],
+                styles)
+        story.append(Spacer(1, 16))
 ```
 
-This way if a different SOW has a 16-week pilot with a week 8 checkpoint, it pulls those numbers automatically from the extracted data.
+**Make standard clauses dynamic** — replace static 5.4 Limitation of Liability with:
+
+```python
+        (f"5.4  Limitation of Liability",
+         legal.get("liabilityCap") or
+         "Neither party shall be liable for indirect, incidental, or consequential "
+         "damages. Each party's aggregate liability under this SOW shall not "
+         "exceed the total fees paid or payable in the preceding twelve months."),
+
+        (f"5.3  Intellectual Property",
+         legal.get("ipOwnership") or
+         "Unless otherwise agreed in writing, all work product created by the "
+         "Vendor under this SOW shall be owned by the Client upon full payment "
+         "of all fees. Pre-existing IP of either party is not transferred."),
+```
+
+**In `build_nda_body`** add a Security section after Confidentiality:
+
+```python
+    # ── 2.5 Security & Data ───────────────────────────────────────────────
+    security = canonical.get("security", {})
+    if any(security.values()):
+        story.append(Paragraph("2.5  Data Security & Privacy", styles["h2"]))
+        rows = [
+            ("Security Requirements",    security.get("requirements") or None),
+            ("Data Residency",           security.get("dataResidency") or None),
+            ("Personal Data Processing", security.get("personalDataProcessing") or None),
+        ]
+        story.append(two_col_table(rows, styles))
+        story.append(Spacer(1, 16))
+```
+
+---
+
+## Summary of what this gives you
+
+After these changes both documents will have:
+
+**SOW:**
+- Pricing model + taxes in Commercial Terms
+- Security & Compliance section with extracted requirements
+- Dynamic IP clause using extracted preference
+- Dynamic liability cap using extracted cap
+- Project Governance section with acceptance criteria, change control, dependencies
+
+**NDA:**
+- Data security requirements section
+- Data residency
+- Personal data processing flag
+- Dynamic liability limitations
+
+Make these changes in order — canonical schema first, then mappings, then generator. Run the pipeline and you'll see significantly more data populated in both documents.
