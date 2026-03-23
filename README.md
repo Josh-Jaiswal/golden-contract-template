@@ -1,37 +1,23 @@
-I can see exactly what's wrong. The filters are inverted — SOW is showing NDA-only fields as missing, and NDA is showing SOW-only fields as missing. The `doc_type` parameter isn't being passed correctly, or the filter logic is backwards.
+The NDA is now correct — `dates.expirationDate`, `confidentiality.obligations`, `legal.disputeResolution`. Those are genuinely missing from the source document. ✅
 
----
+The SOW is still showing all the optional governance fields. The issue is clear — `doc_type` isn't reaching `build_appendix` correctly for the SOW. The function is defaulting to `"sow"` but the filter logic for SOW isn't excluding those optional fields.
 
-## Two problems visible
-
-**SOW missing fields shows `confidentiality.obligations`** — that's an NDA field, shouldn't appear in SOW
-
-**NDA missing fields shows all the SOW governance fields** — `projectGovernance.*`, `legal.warranties`, `scope.sowReferenceId` etc — none of these belong in an NDA
-
----
-
-## Fix — update `skip_sow_only` and `skip_nda_only` and confirm `doc_type` is passed
-
-Replace the entire filter block in `build_appendix`:
+The problem is in the filter condition. Look at this line:
 
 ```python
-def build_appendix(canonical, styles, doc_type="sow"):
-    story = [
-        PageBreak(),
-        Paragraph("APPENDIX A — PIPELINE METADATA", styles["h1"]),
-        HRFlowable(width="100%", thickness=0.5, color=YELLOW_ACCENT, spaceAfter=12),
-        Paragraph(
-            "This appendix is generated automatically by the contract "
-            "intelligence pipeline. It documents the AI extraction process "
-            "for audit and review purposes and forms no part of the "
-            "contractual terms above.", styles["body"]),
-        Spacer(1, 12),
-    ]
+and not (doc_type == "nda" and f in sow_only_fields)
+```
 
-    missing = canonical.get("missingFields", [])
-    if missing:
+This says "skip if generating NDA AND field is SOW-only". But for SOW it does nothing — it never skips anything from `sow_only_fields` when `doc_type == "sow"`. That's backwards from what you want.
 
-        # Never show these regardless of doc type
+Those fields in `sow_only_fields` aren't fields to hide from NDA — they're **optional SOW fields that are fine to be empty**. They shouldn't appear as "missing" in either document.
+
+---
+
+## The real fix — rename the sets properly
+
+```python
+        # Never show these — always optional or noise
         skip_always = {
             "parties.client.signatories",
             "parties.vendor.signatories",
@@ -39,20 +25,10 @@ def build_appendix(canonical, styles, doc_type="sow"):
             "dates.executionDate",
             "commercials.invoicing",
             "scope.outOfScope",
-        }
-
-        # These only make sense in a SOW — hide from NDA appendix
-        sow_only_fields = {
+            # SOW optional fields — only flag if CU specifically said missing
             "scope.sowReferenceId",
             "scope.locationAndTravel",
-            "scope.deliverables",
-            "scope.milestones",
-            "scope.description",
-            "commercials.pricingModel",
-            "commercials.taxes",
             "commercials.expenses",
-            "security.complianceStandards",
-            "security.privacyRequirements",
             "legal.warranties",
             "legal.indemnities",
             "legal.terminationForConvenience",
@@ -73,49 +49,36 @@ def build_appendix(canonical, styles, doc_type="sow"):
             "projectGovernance.constraints",
         }
 
-        # These only make sense in an NDA — hide from SOW appendix
+        # Hide NDA-specific fields when generating SOW
         nda_only_fields = {
             "confidentiality.term",
             "confidentiality.obligations",
             "confidentiality.exceptions",
         }
 
+        # Hide SOW-specific fields when generating NDA
+        sow_only_fields = {
+            "scope.deliverables",
+            "scope.milestones",
+            "scope.description",
+            "commercials.pricingModel",
+            "commercials.taxes",
+            "security.complianceStandards",
+            "security.privacyRequirements",
+        }
+
         important_missing = [
             f for f in missing
             if f not in skip_always
-            and not (doc_type == "nda" and f in sow_only_fields)
             and not (doc_type == "sow" and f in nda_only_fields)
+            and not (doc_type == "nda" and f in sow_only_fields)
         ]
-
-        if important_missing:
-            story.append(Paragraph("Missing Fields", styles["h2"]))
-            story += section_rule(styles)
-            story += bullet_list(important_missing, styles)
-            story.append(Spacer(1, 12))
-
-    story += conflict_table(canonical.get("conflicts", []), styles)
-    story.append(Spacer(1, 8))
-    story += provenance_table(canonical.get("provenance", []), styles)
-    return story
 ```
 
-Then confirm in `generate_pdf` the call passes doc_type:
+The key change — **move all optional fields into `skip_always`** regardless of doc type. These fields are optional by design — warranties, governance, key personnel etc. They should only be flagged missing if your CU analyzer specifically returns them in `missingRequiredClauses`, not just because they weren't extracted.
 
-```python
-story += build_appendix(canonical, styles, doc_type=doc_type)
-```
+After this both documents should show only genuinely important missing fields:
 
----
+**SOW:** `dates.expirationDate`, `legal.disputeResolution`
 
-After this fix:
-
-**SOW missing fields** should show only:
-- `dates.expirationDate` — genuinely missing
-- `legal.disputeResolution` — genuinely missing
-
-**NDA missing fields** should show only:
-- `dates.expirationDate` — genuinely missing
-- `legal.disputeResolution` — genuinely missing
-- Anything else that's genuinely absent from the NDA
-
-Both documents should now have clean, relevant missing field lists.
+**NDA:** `dates.expirationDate`, `confidentiality.obligations`, `legal.disputeResolution`
