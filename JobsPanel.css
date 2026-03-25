@@ -1,0 +1,189 @@
+.jobs-panel {
+  padding: 40px 28px;
+  background: rgba(0,0,0,0.25);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.jobs-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 20px;
+  gap: 12px;
+}
+
+.jobs-empty svg {
+  width: 40px;
+  height: 40px;
+  stroke: var(--grey-600);
+  opacity: 0.5;
+}
+
+.jobs-empty-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--grey-400);
+}
+
+.jobs-empty-hint {
+  font-size: 12px;
+  color: var(--grey-600);
+  line-height: 1.6;
+}
+
+.jobs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── JOB CARD ── */
+.job-card {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  transition: border-color var(--transition);
+  animation: cardIn 0.25s ease;
+}
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.job-card:hover { border-color: var(--border-strong); }
+.job-card--complete { border-color: rgba(46,204,113,0.2); }
+.job-card--failed   { border-color: rgba(231,76,60,0.2); }
+
+.job-card-header {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.job-icon {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.job-icon--queued      { background: rgba(255,255,255,0.05); }
+.job-icon--processing  { background: var(--yellow-muted); }
+.job-icon--complete    { background: var(--success-muted); }
+.job-icon--failed      { background: var(--error-muted); }
+
+.job-icon svg {
+  width: 15px;
+  height: 15px;
+  stroke: currentColor;
+}
+
+.job-icon--queued svg     { stroke: var(--grey-400); }
+.job-icon--processing svg { stroke: var(--yellow); animation: spin 1s linear infinite; }
+.job-icon--complete svg   { stroke: var(--success); }
+.job-icon--failed svg     { stroke: var(--error); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.job-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.job-filename {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.job-id {
+  font-size: 10px;
+  color: var(--grey-400);
+  font-family: monospace;
+  margin-top: 2px;
+}
+
+.job-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  flex-shrink: 0;
+}
+
+.job-badge--queued     { background: rgba(255,255,255,0.05); color: var(--grey-400); }
+.job-badge--processing { background: var(--yellow-muted); color: var(--yellow); }
+.job-badge--complete   { background: var(--success-muted); color: var(--success); }
+.job-badge--failed     { background: var(--error-muted); color: var(--error); }
+
+/* ── PROGRESS ── */
+.job-progress-track {
+  height: 2px;
+  background: rgba(255,255,255,0.06);
+}
+
+.job-progress-fill {
+  height: 100%;
+  transition: width 0.5s ease;
+}
+
+.job-progress-fill--queued     { background: var(--grey-600); }
+.job-progress-fill--processing { background: var(--yellow); }
+.job-progress-fill--complete   { background: var(--success); }
+.job-progress-fill--failed     { background: var(--error); }
+
+/* ── DOWNLOADS ── */
+.job-downloads {
+  padding: 12px 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.dl-btn {
+  flex: 1;
+  padding: 9px 10px;
+  background: transparent;
+  border: 1px solid var(--yellow-border);
+  color: var(--yellow);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.dl-btn:hover {
+  background: var(--yellow);
+  color: var(--black);
+}
+
+.dl-btn svg {
+  width: 11px;
+  height: 11px;
+  stroke: currentColor;
+}
+
+/* ── ERROR ── */
+.job-error {
+  padding: 0 16px 12px;
+  font-size: 12px;
+  color: var(--error);
+  line-height: 1.5;
+}

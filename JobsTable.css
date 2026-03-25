@@ -1,0 +1,161 @@
+.jobs-table-section {
+  padding: 56px 48px 80px;
+  background: var(--black);
+  border-top: 1px solid var(--border);
+}
+
+.jobs-table-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  gap: 20px;
+}
+
+.jobs-table-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+
+.jobs-table-subtitle {
+  font-size: 13px;
+  color: var(--grey-400);
+  margin-top: 5px;
+  font-weight: 300;
+}
+
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: transparent;
+  border: 1.5px solid var(--border-strong);
+  color: var(--grey-400);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.refresh-btn svg {
+  width: 13px;
+  height: 13px;
+  stroke: currentColor;
+}
+
+.refresh-btn:hover {
+  border-color: var(--yellow);
+  color: var(--yellow);
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.jobs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.jobs-table thead th {
+  text-align: left;
+  padding: 10px 16px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--grey-400);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.jobs-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background var(--transition);
+}
+
+.jobs-table tbody tr:hover {
+  background: rgba(255,255,255,0.02);
+}
+
+.jobs-table td {
+  padding: 14px 16px;
+  vertical-align: middle;
+}
+
+.td-id {
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--grey-400);
+  letter-spacing: 0.5px;
+}
+
+.td-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 3px 10px;
+}
+
+.td-badge--queued     { background: rgba(255,255,255,0.05); color: var(--grey-400); }
+.td-badge--processing { background: var(--yellow-muted); color: var(--yellow); }
+.td-badge--complete   { background: var(--success-muted); color: var(--success); }
+.td-badge--failed     { background: var(--error-muted); color: var(--error); }
+
+.td-date {
+  font-size: 12px;
+  color: var(--grey-400);
+}
+
+.td-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.td-btn {
+  padding: 6px 14px;
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.td-btn--dl {
+  background: var(--yellow-muted);
+  color: var(--yellow);
+  border: 1px solid var(--yellow-border);
+}
+
+.td-btn--dl:hover {
+  background: var(--yellow);
+  color: var(--black);
+}
+
+.td-btn--del {
+  background: var(--error-muted);
+  color: var(--error);
+  border: 1px solid rgba(231,76,60,0.2);
+}
+
+.td-btn--del:hover {
+  background: var(--error);
+  color: var(--white);
+}
+
+.table-empty {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--grey-600);
+  font-size: 13px;
+}

@@ -1,0 +1,300 @@
+.upload-panel {
+  padding: 40px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  border-right: 1px solid var(--border);
+  background: var(--black-2);
+}
+
+.panel-section {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── CONFIG ── */
+.config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--grey-400);
+}
+
+.field-input {
+  background: rgba(255,255,255,0.03);
+  border: 1.5px solid var(--border-strong);
+  color: var(--white);
+  font-size: 13px;
+  padding: 11px 14px;
+  outline: none;
+  transition: border-color var(--transition), background var(--transition);
+  width: 100%;
+}
+
+.field-input:focus {
+  border-color: var(--yellow);
+  background: rgba(255,230,0,0.02);
+}
+
+.field-input::placeholder { color: var(--grey-600); }
+
+.url-row {
+  display: flex;
+}
+
+.url-prefix {
+  background: rgba(255,230,0,0.06);
+  border: 1.5px solid var(--border-strong);
+  border-right: none;
+  padding: 11px 12px;
+  font-size: 12px;
+  color: var(--grey-400);
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.url-input {
+  flex: 1;
+  background: rgba(255,255,255,0.03);
+  border: 1.5px solid var(--border-strong);
+  color: var(--white);
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 11px 14px;
+  outline: none;
+  transition: border-color var(--transition);
+  min-width: 0;
+}
+
+.url-input:focus { border-color: var(--yellow); }
+.url-input::placeholder { color: var(--grey-600); }
+
+/* ── DROP ZONE ── */
+.drop-zone {
+  border: 1.5px dashed rgba(255,230,0,0.3);
+  background: rgba(255,230,0,0.01);
+  padding: 44px 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.drop-zone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255,230,0,0.04) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+.drop-zone:hover,
+.drop-zone--active {
+  border-color: var(--yellow);
+  background: rgba(255,230,0,0.04);
+}
+
+.drop-icon {
+  width: 52px;
+  height: 52px;
+  border: 1.5px solid var(--yellow-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 18px;
+  transition: border-color var(--transition);
+}
+
+.drop-zone:hover .drop-icon,
+.drop-zone--active .drop-icon {
+  border-color: var(--yellow);
+}
+
+.drop-icon svg {
+  width: 22px;
+  height: 22px;
+  stroke: var(--yellow);
+}
+
+.drop-title {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 6px;
+}
+
+.drop-hint {
+  font-size: 13px;
+  color: var(--grey-400);
+  line-height: 1.6;
+}
+
+.format-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+.format-tag {
+  padding: 3px 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-strong);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--grey-400);
+}
+
+/* ── FILE CARD ── */
+.file-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: rgba(255,230,0,0.05);
+  border: 1.5px solid var(--yellow-border);
+  animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.file-type-icon {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.file-type-icon--pdf    { background: rgba(231,76,60,0.15); }
+.file-type-icon--doc    { background: rgba(52,152,219,0.15); }
+.file-type-icon--email  { background: rgba(155,89,182,0.15); }
+.file-type-icon--audio  { background: rgba(46,204,113,0.15); }
+.file-type-icon--file   { background: rgba(255,230,0,0.1); }
+
+.file-type-icon svg {
+  width: 20px;
+  height: 20px;
+  stroke: var(--yellow);
+}
+
+.file-details { flex: 1; min-width: 0; }
+
+.file-name {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-size {
+  font-size: 12px;
+  color: var(--grey-400);
+  margin-top: 3px;
+}
+
+.file-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--grey-400);
+  padding: 6px;
+  transition: color var(--transition);
+  display: flex;
+}
+
+.file-remove:hover { color: var(--white); }
+.file-remove svg { width: 16px; height: 16px; stroke: currentColor; }
+
+/* ── TYPE SELECTOR ── */
+.type-selector {
+  display: flex;
+  gap: 10px;
+}
+
+.type-btn {
+  flex: 1;
+  padding: 12px 8px;
+  background: transparent;
+  border: 1.5px solid var(--border-strong);
+  color: var(--grey-400);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.type-btn:hover {
+  border-color: var(--yellow-border);
+  color: var(--white);
+}
+
+.type-btn--active {
+  background: var(--yellow);
+  border-color: var(--yellow);
+  color: var(--black);
+}
+
+/* ── SUBMIT ── */
+.submit-btn {
+  width: 100%;
+  padding: 17px 24px;
+  background: var(--yellow);
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--black);
+  transition: background var(--transition), transform 100ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.submit-btn:hover:not(:disabled) { background: var(--yellow-hover); }
+.submit-btn:active:not(:disabled) { transform: scale(0.99); }
+
+.submit-btn:disabled {
+  background: rgba(255,230,0,0.22);
+  color: rgba(0,0,0,0.35);
+  cursor: not-allowed;
+}
+
+.submit-btn--loading { pointer-events: none; }
+
+.submit-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(0,0,0,0.2);
+  border-top-color: var(--black);
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
