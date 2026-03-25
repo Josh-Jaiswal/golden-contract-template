@@ -65,6 +65,24 @@ button[kind="primary"] {
 .warning { background: rgba(255,200,0,0.15); color:#ffd000; }
 .error { background: rgba(255,0,0,0.15); color:#ff5c5c; }
 
+/* LOADER */
+.loader {
+    border: 4px solid #333;
+    border-top: 4px solid #FFE600;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { 100% { transform: rotate(360deg);} }
+
+.center {
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+    padding:2rem;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -73,7 +91,6 @@ button[kind="primary"] {
 # ============================================================
 
 pages = ["Upload", "Job Status", "Dashboard", "Canonical Viewer"]
-
 selected = st.radio("", pages, horizontal=True)
 page = selected
 
@@ -101,14 +118,18 @@ def format_time(ts):
 
 
 def timeline(status):
-    steps = ["Uploaded", "Queued", "Processing", "Completed"]
-    mapping = {"queued":1,"processing":2,"complete":3}
+    steps = ["Uploaded", "Queued", "Processing", "Generating Docs", "Completed"]
+    mapping = {"queued":1,"processing":2,"complete":4}
     current = mapping.get(status, 0)
 
     html = "<div style='display:flex;gap:20px;'>"
     for i, step in enumerate(steps):
-        color = "#FFE600" if i == current else "#555"
-        if i < current: color = "#00ffa2"
+        if i < current:
+            color = "#00ffa2"
+        elif i == current:
+            color = "#FFE600"
+        else:
+            color = "#555"
 
         html += f"<div style='text-align:center;color:{color}'>{step}</div>"
     html += "</div>"
@@ -148,21 +169,31 @@ if page == "Upload":
         if not file:
             st.error("Upload required")
         else:
-            r = requests.post(
-                f"{API_URL}/analyze",
-                headers={"X-API-Key": API_KEY},
-                files={"file": (file.name, file, file.type)},
-                data={"contract_type": contract_type}
-            )
+            loader = st.empty()
+            loader.markdown('<div class="center"><div class="loader"></div><p>Analyzing...</p></div>', unsafe_allow_html=True)
 
-            if r.status_code == 200:
-                st.session_state.job_id = r.json()["job_id"]
-                st.success("Job started")
+            try:
+                r = requests.post(
+                    f"{API_URL}/analyze",
+                    headers={"X-API-Key": API_KEY},
+                    files={"file": (file.name, file, file.type)},
+                    data={"contract_type": contract_type}
+                )
+
+                loader.empty()
+
+                if r.status_code == 200:
+                    st.session_state.job_id = r.json()["job_id"]
+                    st.success("Job started")
+
+            except:
+                loader.empty()
+                st.error("Connection failed")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ============================================================
-# ⏳ JOB STATUS
+# ⏳ JOB STATUS (LIVE POLLING)
 # ============================================================
 
 if page == "Job Status":
@@ -173,34 +204,60 @@ if page == "Job Status":
 
     job_id = st.session_state.job_id
 
-    job = requests.get(f"{API_URL}/jobs/{job_id}", headers={"X-API-Key": API_KEY}).json()
+    timeline_box = st.empty()
+    status_box = st.empty()
+    progress_bar = st.progress(0)
 
-    timeline(job["status"])
+    progress = 0
 
-    st.markdown(f"<div class='card'>{badge(job['status'])}</div>", unsafe_allow_html=True)
+    while True:
+        job = requests.get(f"{API_URL}/jobs/{job_id}", headers={"X-API-Key": API_KEY}).json()
+        status = job["status"]
 
-    if job["status"] == "complete":
+        timeline_box.empty()
+        with timeline_box:
+            timeline(status)
 
-        urls = job["download_urls"]
+        status_box.markdown(f"<div class='card'>{badge(status)}</div>", unsafe_allow_html=True)
 
-        st.subheader("Documents")
+        if status == "queued":
+            progress = 20
+        elif status == "processing":
+            progress = min(progress + 15, 85)
+        elif status == "complete":
+            progress = 100
+            progress_bar.progress(progress)
 
-        col1, col2 = st.columns(2)
+            urls = job.get("download_urls", {})
 
-        with col1:
-            nda = requests.get(f"{API_URL}{urls['nda_pdf']}", headers={"X-API-Key": API_KEY}).content
-            preview_pdf(nda)
-            st.download_button("Download NDA", nda, "NDA.pdf")
+            st.subheader("Documents")
+            col1, col2 = st.columns(2)
 
-        with col2:
-            sow = requests.get(f"{API_URL}{urls['sow_pdf']}", headers={"X-API-Key": API_KEY}).content
-            preview_pdf(sow)
-            st.download_button("Download SOW", sow, "SOW.pdf")
+            with col1:
+                try:
+                    nda = requests.get(f"{API_URL}{urls['nda_pdf']}", headers={"X-API-Key": API_KEY}).content
+                    preview_pdf(nda)
+                    st.download_button("Download NDA", nda, "NDA.pdf")
+                except:
+                    st.warning("NDA not ready")
 
-    else:
-        st.warning("Documents not ready yet")
+            with col2:
+                try:
+                    sow = requests.get(f"{API_URL}{urls['sow_pdf']}", headers={"X-API-Key": API_KEY}).content
+                    preview_pdf(sow)
+                    st.download_button("Download SOW", sow, "SOW.pdf")
+                except:
+                    st.warning("SOW not ready")
 
-    audit_trail(job)
+            audit_trail(job)
+            break
+
+        elif status == "failed":
+            st.error("Job failed")
+            break
+
+        progress_bar.progress(progress)
+        time.sleep(2)
 
 # ============================================================
 # 📊 DASHBOARD
