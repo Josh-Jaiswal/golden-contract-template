@@ -5,46 +5,42 @@ import json
 import base64
 from datetime import datetime
 import pytz
-
 API_URL = "http://localhost:8000"
 API_KEY = "GoldenEY1479"
-
 st.set_page_config(layout="wide", page_title="EY Contract Intelligence", page_icon="⚡")
-
 # ─────────────────────────────────────────────
 # GLOBAL STYLES
 # ─────────────────────────────────────────────
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
-
 :root {
-    --gold: #FFE600;
-    --gold-dim: rgba(255,230,0,0.12);
-    --gold-glow: rgba(255,230,0,0.08);
-    --bg: #080808;
-    --surface: #111111;
-    --surface2: #181818;
-    --border: #222222;
-    --border-bright: #2e2e2e;
-    --text: #f0f0f0;
-    --text-muted: #666;
-    --text-dim: #999;
-    --green: #00e87a;
-    --green-dim: rgba(0,232,122,0.12);
-    --amber: #ffb300;
-    --amber-dim: rgba(255,179,0,0.12);
-    --red: #ff4d4d;
-    --red-dim: rgba(255,77,77,0.12);
-    --blue: #4d9fff;
-    --blue-dim: rgba(77,159,255,0.10);
+  --gold: #FFE600;
+  --gold-dim: rgba(255,230,0,0.12);
+  --gold-glow: rgba(255,230,0,0.08);
+  --bg: #080808;
+  --surface: #111111;
+  --surface2: #181818;
+  --border: #222222;
+  --border-bright: #2e2e2e;
+  --text: #f0f0f0;
+  --text-muted: #666;
+  --text-dim: #999;
+  --green: #00e87a;
+  --green-dim: rgba(0,232,122,0.12);
+  --amber: #ffb300;
+  --amber-dim: rgba(255,179,0,0.12);
+  --red: #ff4d4d;
+  --red-dim: rgba(255,77,77,0.12);
+  --blue: #4d9fff;
+  --blue-dim: rgba(77,159,255,0.10);
 }
 
 html, body, [class*="css"], .stApp {
-    background: var(--bg) !important;
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
+  background: var(--bg) !important;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
 }
 
 /* Scrollbar */
@@ -54,339 +50,347 @@ html, body, [class*="css"], .stApp {
 
 /* ── HEADER ── */
 .ey-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 18px 32px;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg);
-    position: sticky;
-    top: 0;
-    z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 32px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
-
-.ey-logo {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-}
-
+.ey-logo { display: flex; align-items: center; gap: 14px; }
 .ey-logo-mark {
-    font-family: 'Syne', sans-serif;
-    font-weight: 800;
-    font-size: 22px;
-    color: var(--gold);
-    letter-spacing: -0.5px;
-    background: var(--gold-dim);
-    border: 1px solid rgba(255,230,0,0.25);
-    padding: 4px 12px;
-    border-radius: 6px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 22px;
+  color: var(--gold);
+  letter-spacing: -0.5px;
+  background: var(--gold-dim);
+  border: 1px solid rgba(255,230,0,0.25);
+  padding: 4px 12px;
+  border-radius: 6px;
 }
-
 .ey-wordmark {
-    font-family: 'Syne', sans-serif;
-    font-weight: 600;
-    font-size: 15px;
-    color: var(--text);
-    letter-spacing: 0.4px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text);
+  letter-spacing: 0.4px;
 }
-
-.ey-wordmark span {
-    color: var(--text-muted);
-    font-weight: 300;
-}
-
-.ey-header-right {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-
+.ey-wordmark span { color: var(--text-muted); font-weight: 300; }
+.ey-header-right { display: flex; align-items: center; gap: 20px; }
 .ey-status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--green);
-    box-shadow: 0 0 8px var(--green);
-    display: inline-block;
-    margin-right: 6px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  display: inline-block;
+  margin-right: 6px;
 }
-
 .ey-env-tag {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    color: var(--text-muted);
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    padding: 4px 10px;
-    border-radius: 4px;
-    letter-spacing: 0.5px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
 }
 
 /* ── NAV ── */
 .ey-nav {
-    display: flex;
-    gap: 2px;
-    padding: 12px 32px;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg);
+  display: flex;
+  gap: 2px;
+  padding: 12px 32px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
 }
 
 /* ── SECTION TITLES ── */
 .section-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text);
-    letter-spacing: -0.3px;
-    margin-bottom: 4px;
+  font-family: 'Syne', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.3px;
+  margin-bottom: 4px;
 }
-.section-sub {
-    font-size: 13px;
-    color: var(--text-muted);
-    margin-bottom: 24px;
-}
+.section-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
 
 /* ── CARDS ── */
 .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 20px 24px;
-    margin-bottom: 12px;
-    transition: border-color 0.2s;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 12px;
+  transition: border-color 0.2s;
 }
 .card:hover { border-color: var(--border-bright); }
-
 .card-highlight {
-    background: var(--surface);
-    border: 1px solid rgba(255,230,0,0.2);
-    border-radius: 10px;
-    padding: 20px 24px;
-    margin-bottom: 12px;
+  background: var(--surface);
+  border: 1px solid rgba(255,230,0,0.2);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 12px;
 }
 
 /* ── BADGES ── */
 .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.3px;
-    font-family: 'DM Mono', monospace;
-    text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  font-family: 'DM Mono', monospace;
+  text-transform: uppercase;
 }
 .badge-success { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,232,122,0.25); }
-.badge-warning  { background: var(--amber-dim);  color: var(--amber);  border: 1px solid rgba(255,179,0,0.25); }
-.badge-error    { background: var(--red-dim);     color: var(--red);    border: 1px solid rgba(255,77,77,0.25); }
-.badge-idle     { background: var(--surface2);    color: var(--text-muted); border: 1px solid var(--border); }
+.badge-warning { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(255,179,0,0.25); }
+.badge-error { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,77,77,0.25); }
+.badge-idle { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
 
 /* ── TIMELINE ── */
-.timeline-wrap {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    padding: 20px 0;
-}
-
+.timeline-wrap { display: flex; align-items: center; gap: 0; padding: 20px 0; }
 .tl-step {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    flex: 1;
-    position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  position: relative;
 }
-
 .tl-dot {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 600;
-    z-index: 1;
-    position: relative;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  z-index: 1;
+  position: relative;
 }
-
-.tl-dot-done  { background: var(--green);  color: #000; box-shadow: 0 0 12px rgba(0,232,122,0.4); }
-.tl-dot-active{ background: var(--gold);   color: #000; box-shadow: 0 0 14px rgba(255,230,0,0.5); animation: pulse 1.5s ease-in-out infinite; }
-.tl-dot-idle  { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
-
+.tl-dot-done { background: var(--green); color: #000; box-shadow: 0 0 12px rgba(0,232,122,0.4); }
+.tl-dot-active { background: var(--gold); color: #000; box-shadow: 0 0 14px rgba(255,230,0,0.5); animation: pulse 1.5s ease-in-out infinite; }
+.tl-dot-idle { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
 @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 8px rgba(255,230,0,0.3); }
-    50%       { box-shadow: 0 0 20px rgba(255,230,0,0.7); }
+  0%, 100% { box-shadow: 0 0 8px rgba(255,230,0,0.3); }
+  50% { box-shadow: 0 0 20px rgba(255,230,0,0.7); }
 }
-
 .tl-line {
-    position: absolute;
-    top: 14px;
-    left: 50%;
-    width: 100%;
-    height: 2px;
-    z-index: 0;
+  position: absolute;
+  top: 14px; left: 50%;
+  width: 100%; height: 2px;
+  z-index: 0;
 }
-
 .tl-label {
-    font-size: 11px;
-    font-family: 'DM Mono', monospace;
-    letter-spacing: 0.3px;
-    color: var(--text-muted);
-    text-align: center;
-    white-space: nowrap;
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
 }
-
 .tl-label-active { color: var(--gold); }
-.tl-label-done   { color: var(--green); }
+.tl-label-done { color: var(--green); }
 
 /* ── METRIC CARDS ── */
 .metric-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 18px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
 }
 .metric-label {
-    font-size: 11px;
-    font-family: 'DM Mono', monospace;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    margin-bottom: 6px;
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 6px;
 }
 .metric-value {
-    font-family: 'Syne', sans-serif;
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--text);
+  font-family: 'Syne', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
 }
 .metric-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 
 /* ── CONFLICT CARD ── */
 .conflict-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-    margin-bottom: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 14px;
 }
 .conflict-header {
-    background: rgba(255,77,77,0.06);
-    border-bottom: 1px solid var(--border);
-    padding: 12px 18px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 13px;
-    color: var(--red);
-    font-family: 'DM Mono', monospace;
+  background: rgba(255,77,77,0.06);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--red);
+  font-family: 'DM Mono', monospace;
 }
-.conflict-body {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-}
-.conflict-side {
-    padding: 16px 18px;
-}
-.conflict-side:first-child {
-    border-right: 1px solid var(--border);
-}
+.conflict-body { display: grid; grid-template-columns: 1fr 1fr; }
+.conflict-side { padding: 16px 18px; }
+.conflict-side:first-child { border-right: 1px solid var(--border); }
 .conflict-doc-label {
-    font-size: 10px;
-    font-family: 'DM Mono', monospace;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    margin-bottom: 8px;
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
 }
 .conflict-text {
-    font-size: 13px;
-    color: var(--text);
-    line-height: 1.6;
-    background: var(--surface2);
-    border-radius: 6px;
-    padding: 10px 12px;
-    border-left: 2px solid var(--red);
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.6;
+  background: var(--surface2);
+  border-radius: 6px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--red);
 }
 
-/* ── MISSING FIELD ── */
+/* ── MISSING FIELD (legacy, kept for fallback) ── */
 .missing-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
 }
-.missing-icon {
-    font-size: 16px;
+.missing-icon { font-size: 16px; }
+.missing-field { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--amber); }
+.missing-hint { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+
+/* ── MISSING FIELDS TREE ── */
+.mf-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 10px;
+  overflow: hidden;
 }
-.missing-field {
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    color: var(--amber);
+.mf-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 18px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+  background: var(--surface);
 }
-.missing-hint {
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-left: auto;
+.mf-section-header:hover { background: var(--surface2); }
+.mf-chevron {
+  font-size: 11px;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+  width: 14px;
+  text-align: center;
+}
+.mf-section-icon { font-size: 15px; }
+.mf-section-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+}
+.mf-section-count {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--amber);
+  background: var(--amber-dim);
+  border: 1px solid rgba(255,179,0,0.2);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+.mf-items {
+  border-top: 1px solid var(--border);
+  padding: 8px 0;
+  background: #0d0d0d;
+}
+.mf-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 18px 9px 42px;
+  transition: background 0.1s;
+}
+.mf-item:hover { background: rgba(255,179,0,0.04); }
+.mf-item-icon { font-size: 13px; color: var(--amber); }
+.mf-item-name {
+  font-family: 'DM Mono', monospace;
+  font-size: 12.5px;
+  color: var(--amber);
+  flex: 1;
+}
+.mf-item-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: 'DM Sans', sans-serif;
+}
+.mf-connector {
+  width: 1px;
+  background: var(--border);
+  margin-left: 24px;
+  height: 100%;
 }
 
 /* ── DASHBOARD JOB ROW ── */
 .job-row {
-    display: grid;
-    grid-template-columns: 44px 1fr auto auto auto;
-    align-items: center;
-    gap: 16px;
-    padding: 16px 20px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    margin-bottom: 8px;
-    transition: border-color 0.15s;
+  display: grid;
+  grid-template-columns: 44px 1fr auto auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  transition: border-color 0.15s;
 }
 .job-row:hover { border-color: var(--border-bright); }
-
 .job-num {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    color: var(--text-muted);
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: 36px; height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-
-.job-id-main {
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    color: var(--text);
-}
-.job-id-sub {
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-top: 2px;
-}
+.job-id-main { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--text); }
+.job-id-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 
 /* ── UPLOAD ZONE ── */
 .upload-hint {
-    border: 1.5px dashed var(--border-bright);
-    border-radius: 12px;
-    padding: 40px 32px;
-    text-align: center;
-    margin-bottom: 20px;
-    background: var(--surface);
+  border: 1.5px dashed var(--border-bright);
+  border-radius: 12px;
+  padding: 40px 32px;
+  text-align: center;
+  margin-bottom: 20px;
+  background: var(--surface);
 }
 .upload-hint-icon { font-size: 32px; margin-bottom: 10px; }
 .upload-hint-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 600; color: var(--text); }
@@ -394,101 +398,134 @@ html, body, [class*="css"], .stApp {
 
 /* ── JSON VIEWER ── */
 .json-viewer {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 20px;
-    font-family: 'DM Mono', monospace;
-    font-size: 12.5px;
-    line-height: 1.7;
-    overflow-x: auto;
-    max-height: 600px;
-    overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  overflow-x: auto;
+  max-height: 600px;
+  overflow-y: auto;
 }
 
 /* ── SUMMARY SECTION ── */
 .summary-row {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-    padding: 14px 0;
-    border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
 }
 .summary-row:last-child { border-bottom: none; }
 .summary-key {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    width: 160px;
-    flex-shrink: 0;
-    padding-top: 2px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  width: 160px;
+  flex-shrink: 0;
+  padding-top: 2px;
 }
-.summary-val {
-    font-size: 13px;
-    color: var(--text);
-    line-height: 1.5;
+.summary-val { font-size: 13px; color: var(--text); line-height: 1.5; }
+.summary-val-empty { font-size: 13px; color: var(--text-muted); font-style: italic; }
+
+/* ── CONTRACT VIEWER PAGE BANNER ── */
+.cv-page-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, rgba(255,230,0,0.08) 0%, rgba(255,179,0,0.04) 100%);
+  border: 1px solid rgba(255,230,0,0.2);
+  border-radius: 10px;
+  margin-bottom: 20px;
 }
-.summary-val-empty {
-    font-size: 13px;
-    color: var(--text-muted);
-    font-style: italic;
+.cv-page-banner-icon {
+  font-size: 20px;
+}
+.cv-page-banner-label {
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.cv-page-banner-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 1px;
+}
+.cv-page-banner-id {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: auto;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 4px;
 }
 
 /* ── STREAMLIT OVERRIDES ── */
 div[data-testid="stFileUploader"] {
-    background: var(--surface) !important;
-    border: 1.5px dashed var(--border-bright) !important;
-    border-radius: 10px !important;
-    padding: 20px !important;
+  background: var(--surface) !important;
+  border: 1.5px dashed var(--border-bright) !important;
+  border-radius: 10px !important;
+  padding: 20px !important;
 }
 div[data-testid="stSelectbox"] > div { background: var(--surface2) !important; }
-
 button[kind="primary"],
 .stButton > button {
-    background: var(--gold) !important;
-    color: #000 !important;
-    font-family: 'Syne', sans-serif !important;
-    font-weight: 600 !important;
-    font-size: 13px !important;
-    letter-spacing: 0.3px !important;
-    border: none !important;
-    border-radius: 8px !important;
-    padding: 10px 20px !important;
-    transition: opacity 0.2s !important;
+  background: var(--gold) !important;
+  color: #000 !important;
+  font-family: 'Syne', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  letter-spacing: 0.3px !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 10px 20px !important;
+  transition: opacity 0.2s !important;
 }
 .stButton > button:hover { opacity: 0.88 !important; }
 
+/* ── TABS: larger font + active gold indicator ── */
 .stTabs [data-baseweb="tab-list"] {
-    background: transparent !important;
-    gap: 4px;
-    border-bottom: 1px solid var(--border) !important;
+  background: transparent !important;
+  gap: 4px;
+  border-bottom: 1px solid var(--border) !important;
 }
 .stTabs [data-baseweb="tab"] {
-    background: transparent !important;
-    color: var(--text-muted) !important;
-    font-family: 'DM Sans', sans-serif !important;
-    font-size: 13px !important;
-    border-radius: 0 !important;
-    padding: 8px 16px !important;
-    border-bottom: 2px solid transparent !important;
+  background: transparent !important;
+  color: var(--text-muted) !important;
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  border-radius: 0 !important;
+  padding: 10px 18px !important;
+  border-bottom: 2px solid transparent !important;
+  letter-spacing: 0.1px !important;
 }
 .stTabs [aria-selected="true"] {
-    color: var(--gold) !important;
-    border-bottom: 2px solid var(--gold) !important;
+  color: var(--gold) !important;
+  border-bottom: 2px solid var(--gold) !important;
+  background: rgba(255,230,0,0.04) !important;
 }
 
 .stProgress > div > div { background: var(--gold) !important; border-radius: 4px; }
 .stProgress { background: var(--surface2) !important; border-radius: 4px; }
-
 div[data-testid="stMetric"] {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 16px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px;
 }
-
 .stAlert { background: var(--surface2) !important; border-radius: 8px !important; border: 1px solid var(--border) !important; }
 
 /* Hide streamlit chrome */
@@ -497,17 +534,107 @@ div[data-testid="stMetric"] {
 
 /* ── FOOTER ── */
 .ey-footer {
-    margin-top: 60px;
-    border-top: 1px solid var(--border);
-    padding: 16px 32px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: var(--text-muted);
-    font-size: 12px;
-    font-family: 'DM Mono', monospace;
+  margin-top: 60px;
+  border-top: 1px solid var(--border);
+  padding: 16px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: 'DM Mono', monospace;
 }
 
+/* ── CONFLICTS COUNTER ── */
+.conflict-count-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+  padding: 16px 20px;
+  background: rgba(255,77,77,0.05);
+  border: 1px solid rgba(255,77,77,0.15);
+  border-radius: 10px;
+}
+.conflict-count-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.3px;
+}
+.conflict-count-label {
+  font-size: 13px;
+  color: var(--text-dim);
+  font-family: 'DM Sans', sans-serif;
+}
+.conflict-count-icon {
+  font-size: 18px;
+  margin-left: auto;
+  color: var(--red);
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+.timeline-container { display: flex; gap: 18px; align-items: center; }
+.tl-step { display: flex; align-items: center; position: relative; }
+.tl-line { width: 60px; height: 3px; margin: 0 6px; border-radius: 4px; }
+.tl-dot {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  display: flex; justify-content: center; align-items: center;
+  font-size: 13px; font-weight: 600;
+}
+.tl-dot-done { background: var(--green); color: white; }
+.tl-dot-active { background: var(--yellow); color: black; }
+.tl-dot-idle { background: var(--border); color: black; }
+.tl-label { font-size: 13px; margin-top: 4px; text-align: center; }
+.tl-label-done { color: var(--green); }
+.tl-label-active { color: var(--yellow); }
+.conflict-box {
+  border: 1px solid #2a2a2a;
+  padding: 0;
+  border-radius: 10px;
+  margin-bottom: 14px;
+  background: #111111;
+  overflow: hidden;
+}
+.conflict-box-header {
+  background: rgba(255,77,77,0.06);
+  border-bottom: 1px solid #2a2a2a;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ff4d4d;
+  font-family: 'DM Mono', monospace;
+}
+.conflict-title { font-weight: bold; margin-bottom: 12px; }
+.conflict-body { display: flex; gap: 0; }
+.conflict-side { flex: 1; padding: 14px 18px; }
+.conflict-side:not(:last-child) { border-right: 1px solid #222; }
+.conflict-doc-label {
+  font-size: 10px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #555;
+  font-family: 'DM Mono', monospace;
+}
+.conflict-text {
+  background: #181818;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #e0e0e0;
+  line-height: 1.55;
+  border-left: 2px solid #ff4d4d;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -516,18 +643,18 @@ div[data-testid="stMetric"] {
 # ─────────────────────────────────────────────
 st.markdown("""
 <div class="ey-header">
-    <div class="ey-logo">
-        <div class="ey-logo-mark">EY</div>
-        <div>
-            <div class="ey-wordmark">Contract Intelligence <span>Platform</span></div>
-        </div>
+  <div class="ey-logo">
+    <div class="ey-logo-mark">EY</div>
+    <div>
+      <div class="ey-wordmark">Contract Intelligence <span>Platform</span></div>
     </div>
-    <div class="ey-header-right">
-        <span style="font-size:12px;color:#555;font-family:'DM Mono',monospace">
-            <span class="ey-status-dot"></span>API Connected
-        </span>
-        <div class="ey-env-tag">INTERNAL · CONFIDENTIAL</div>
-    </div>
+  </div>
+  <div class="ey-header-right">
+    <span style="font-size:12px;color:#555;font-family:'DM Mono',monospace">
+      <span class="ey-status-dot"></span>API Connected
+    </span>
+    <div class="ey-env-tag">INTERNAL · CONFIDENTIAL</div>
+  </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -535,7 +662,6 @@ st.markdown("""
 # NAV
 # ─────────────────────────────────────────────
 pages = ["Upload & Analyze", "Job Status", "Dashboard", "Contract Viewer"]
-
 if "page" not in st.session_state:
     st.session_state.page = "Upload & Analyze"
 
@@ -546,13 +672,11 @@ page_map = {
     "Dashboard": 2,
     "Contract Viewer": 3,
 }
-
 for i, p in enumerate(pages):
     if nav_cols[i].button(p, key=f"nav_{p}"):
         st.session_state.page = p
 
 page = st.session_state.page
-
 st.markdown('<div style="padding: 32px 32px 0 32px;">', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
@@ -568,7 +692,6 @@ def badge_html(status):
         return '<span class="badge badge-error">✕ Failed</span>'
     return '<span class="badge badge-idle">○ Queued</span>'
 
-
 def format_time(ts):
     if not ts:
         return "—"
@@ -579,45 +702,41 @@ def format_time(ts):
     except:
         return ts
 
-
 def render_timeline(status):
     steps = ["Uploaded", "Queued", "Processing", "Generating", "Complete"]
     status_map = {"queued": 1, "processing": 2, "generating": 3, "complete": 4}
     current = status_map.get(status.lower(), 0)
-
-    html = '<div class="timeline-wrap">'
+    html = '<div class="timeline-container">'
     for i, step in enumerate(steps):
-        if i < current:
-            dot_cls = "tl-dot-done"
-            lbl_cls = "tl-label tl-label-done"
+        is_last_step = (i == len(steps) - 1)
+        if i < current or (is_last_step and status == "complete"):
+            dot_class = "tl-dot tl-dot-done"
+            label_class = "tl-label tl-label-done"
             icon = "✓"
             line_color = "var(--green)"
         elif i == current:
-            dot_cls = "tl-dot-active"
-            lbl_cls = "tl-label tl-label-active"
+            dot_class = "tl-dot tl-dot-active"
+            label_class = "tl-label tl-label-active"
             icon = str(i + 1)
             line_color = "var(--border)"
         else:
-            dot_cls = "tl-dot-idle"
-            lbl_cls = "tl-label"
+            dot_class = "tl-dot tl-dot-idle"
+            label_class = "tl-label"
             icon = str(i + 1)
             line_color = "var(--border)"
-
         line_html = ""
         if i < len(steps) - 1:
             lc = "var(--green)" if i < current else "var(--border)"
-            line_html = f'<div class="tl-line" style="background:linear-gradient(90deg,{lc} 0%,{lc} 100%)"></div>'
-
+            line_html = f'<div class="tl-line" style="background:{lc};"></div>'
         html += f"""
         <div class="tl-step">
-            {line_html}
-            <div class="tl-dot {dot_cls}">{icon}</div>
-            <div class="{lbl_cls}">{step}</div>
+          {line_html}
+          <div class="{dot_class}">{icon}</div>
+          <div class="{label_class}">{step}</div>
         </div>
         """
     html += "</div>"
     return html
-
 
 def preview_pdf(data):
     b64 = base64.b64encode(data).decode()
@@ -627,13 +746,11 @@ def preview_pdf(data):
         unsafe_allow_html=True
     )
 
-
 def api_get(path):
     try:
         return requests.get(f"{API_URL}{path}", headers={"X-API-Key": API_KEY})
     except:
         return None
-
 
 def api_get_bytes(path):
     try:
@@ -642,12 +759,79 @@ def api_get_bytes(path):
     except:
         return None
 
+# ── Missing fields tree builder ──
+SECTION_META = {
+    "parties":        {"icon": "👥", "label": "Parties"},
+    "dates":          {"icon": "📅", "label": "Dates"},
+    "scope":          {"icon": "📐", "label": "Scope of Work"},
+    "confidentiality":{"icon": "🔒", "label": "Confidentiality"},
+    "commercials":    {"icon": "💰", "label": "Commercials"},
+    "legal":          {"icon": "⚖️",  "label": "Legal"},
+    "payment":        {"icon": "💳", "label": "Payment"},
+    "termination":    {"icon": "🚫", "label": "Termination"},
+    "other":          {"icon": "📋", "label": "Other"},
+}
+
+def group_missing_fields(missing_list):
+    sections = {}
+    for f in missing_list:
+        if isinstance(f, dict):
+            label = f.get("field") or f.get("name", str(f))
+            hint  = f.get("hint") or f.get("description", "Required for compliance")
+        else:
+            label = str(f)
+            hint  = "Required for compliance"
+        # Derive section from dot-notation prefix
+        parts = label.split(".")
+        section_key = parts[0].lower() if len(parts) > 1 else "other"
+        subfield = ".".join(parts[1:]) if len(parts) > 1 else label
+        if section_key not in sections:
+            sections[section_key] = []
+        sections[section_key].append({"label": subfield, "full": label, "hint": hint})
+    return sections
+
+def render_missing_fields_tree(missing_list):
+    sections = group_missing_fields(missing_list)
+    for sec_key, items in sections.items():
+        meta = SECTION_META.get(sec_key, {"icon": "📋", "label": sec_key.capitalize()})
+        section_id = f"mf_sec_{sec_key}"
+        items_html = ""
+        for item in items:
+            items_html += f"""
+            <div class="mf-item">
+              <div class="mf-item-icon">⚠</div>
+              <div class="mf-item-name">{item['label']}</div>
+              <div class="mf-item-hint">{item['hint']}</div>
+            </div>
+            """
+        st.markdown(f"""
+        <div class="mf-section">
+          <div class="mf-section-header" onclick="
+            var el = document.getElementById('{section_id}');
+            var ch = this.querySelector('.mf-chevron');
+            if(el.style.display === 'none'){{
+              el.style.display='block';
+              ch.style.transform='rotate(90deg)';
+            }} else {{
+              el.style.display='none';
+              ch.style.transform='rotate(0deg)';
+            }}
+          ">
+            <span class="mf-chevron" style="transform:rotate(90deg)">▶</span>
+            <span class="mf-section-icon">{meta['icon']}</span>
+            <span class="mf-section-name">{meta['label']}</span>
+            <span class="mf-section-count">{len(items)} missing</span>
+          </div>
+          <div class="mf-items" id="{section_id}">
+            {items_html}
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
 # PAGE: UPLOAD
 # ─────────────────────────────────────────────
 if page == "Upload & Analyze":
-
     st.markdown('<div class="section-title">Upload Contract</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-sub">Upload a contract document to begin AI-powered extraction and analysis.</div>', unsafe_allow_html=True)
 
@@ -655,23 +839,25 @@ if page == "Upload & Analyze":
 
     with col_left:
         st.markdown('<div class="card">', unsafe_allow_html=True)
+        AUDIO_TYPES = ["mp3", "wav", "m4a", "mp4", "m4v"]
+        DOC_TYPES   = ["pdf", "docx", "doc", "txt", "eml"]
         file = st.file_uploader(
             "Drop your contract here",
-            type=["pdf", "docx", "txt"],
-            help="Supported formats: PDF, DOCX, TXT"
+            type=AUDIO_TYPES + DOC_TYPES,
+            help="Supported formats: PDF, DOCX, TXT, MP3, WAV, M4A, M4V"
         )
         contract_type = st.selectbox(
             "Contract Type",
             ["auto", "nda", "sow"],
             format_func=lambda x: {
                 "auto": "🔍 Auto-detect",
-                "nda": "📋 NDA — Non-Disclosure Agreement",
-                "sow": "📄 SOW — Statement of Work"
+                "nda":  "📋 NDA — Non-Disclosure Agreement",
+                "sow":  "📄 SOW — Statement of Work"
             }[x]
         )
         st.markdown("</div>", unsafe_allow_html=True)
 
-        if st.button("⚡  Start Analysis", type="primary"):
+        if st.button("⚡ Start Analysis", type="primary"):
             if not file:
                 st.error("Please upload a document first.")
             else:
@@ -697,59 +883,56 @@ if page == "Upload & Analyze":
     with col_right:
         st.markdown("""
         <div class="card" style="height:100%">
-            <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:600;margin-bottom:16px;color:var(--text)">What happens next?</div>
-            <div style="display:flex;flex-direction:column;gap:14px">
-                <div style="display:flex;gap:12px;align-items:flex-start">
-                    <div style="background:var(--gold-dim);border:1px solid rgba(255,230,0,0.2);border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px">1</div>
-                    <div>
-                        <div style="font-size:13px;font-weight:500;color:var(--text)">Document Parsing</div>
-                        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Text extraction and structure detection</div>
-                    </div>
-                </div>
-                <div style="display:flex;gap:12px;align-items:flex-start">
-                    <div style="background:var(--gold-dim);border:1px solid rgba(255,230,0,0.2);border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px">2</div>
-                    <div>
-                        <div style="font-size:13px;font-weight:500;color:var(--text)">Clause Extraction</div>
-                        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">AI identifies and categorises legal clauses</div>
-                    </div>
-                </div>
-                <div style="display:flex;gap:12px;align-items:flex-start">
-                    <div style="background:var(--gold-dim);border:1px solid rgba(255,230,0,0.2);border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px">3</div>
-                    <div>
-                        <div style="font-size:13px;font-weight:500;color:var(--text)">Conflict Detection</div>
-                        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Cross-document inconsistency analysis</div>
-                    </div>
-                </div>
-                <div style="display:flex;gap:12px;align-items:flex-start">
-                    <div style="background:var(--gold-dim);border:1px solid rgba(255,230,0,0.2);border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px">4</div>
-                    <div>
-                        <div style="font-size:13px;font-weight:500;color:var(--text)">Document Generation</div>
-                        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">NDA and SOW PDFs generated and ready</div>
-                    </div>
-                </div>
+          <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:600;margin-bottom:16px;color:var(--text)">What happens next?</div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              <div style="background:var(--gold-dim);border:1px solid rgba(255,230,0,0.2);border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px">1</div>
+              <div>
+                <div style="font-size:13px;font-weight:500;color:var(--text)">Document Parsing</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Text extraction and structure detection</div>
+              </div>
             </div>
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              <div style="background:var(--gold-dim);border:1px solid rgba(255,230,0,0.2);border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px">2</div>
+              <div>
+                <div style="font-size:13px;font-weight:500;color:var(--text)">Clause Extraction</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:2px">AI identifies and categorises legal clauses</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              <div style="background:var(--gold-dim);border:1px solid rgba(255,230,0,0.2);border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px">3</div>
+              <div>
+                <div style="font-size:13px;font-weight:500;color:var(--text)">Conflict Detection</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Cross-document inconsistency analysis</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              <div style="background:var(--gold-dim);border:1px solid rgba(255,230,0,0.2);border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px">4</div>
+              <div>
+                <div style="font-size:13px;font-weight:500;color:var(--text)">Document Generation</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:2px">NDA and SOW PDFs generated and ready</div>
+              </div>
+            </div>
+          </div>
         </div>
         """, unsafe_allow_html=True)
-
 
 # ─────────────────────────────────────────────
 # PAGE: JOB STATUS
 # ─────────────────────────────────────────────
 elif page == "Job Status":
-
     if "job_id" not in st.session_state:
         st.warning("No active job. Please upload a contract first.")
         st.stop()
 
     job_id = st.session_state.job_id
-
     st.markdown(f'<div class="section-title">Job Status</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="section-sub" style="font-family:\'DM Mono\',monospace">{job_id}</div>', unsafe_allow_html=True)
 
     timeline_ph = st.empty()
-    status_ph = st.empty()
+    status_ph   = st.empty()
     progress_ph = st.progress(0)
-    content_ph = st.empty()
+    content_ph  = st.empty()
 
     p = 0
     while True:
@@ -758,9 +941,9 @@ elif page == "Job Status":
             st.error("Cannot reach API")
             break
         job = r.json()
-        s = job["status"].lower()
+        s   = job["status"].lower()
 
-        timeline_ph.markdown(render_timeline(s), unsafe_allow_html=True)
+        timeline_ph.html(render_timeline(s))
         status_ph.markdown(
             f'<div style="display:flex;align-items:center;gap:12px;padding:10px 0">'
             f'{badge_html(s)}'
@@ -773,13 +956,10 @@ elif page == "Job Status":
         if s == "complete":
             progress_ph.progress(100)
             urls = job.get("download_urls", {})
-
             with content_ph.container():
                 st.markdown("---")
                 st.markdown('<div style="font-family:\'Syne\',sans-serif;font-size:16px;font-weight:600;margin-bottom:16px">Generated Documents</div>', unsafe_allow_html=True)
-
                 c1, c2 = st.columns(2, gap="medium")
-
                 with c1:
                     st.markdown('<div class="card">', unsafe_allow_html=True)
                     st.markdown('<div style="font-size:11px;font-family:\'DM Mono\',monospace;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">Non-Disclosure Agreement</div>', unsafe_allow_html=True)
@@ -790,7 +970,6 @@ elif page == "Job Status":
                     else:
                         st.warning("NDA document unavailable")
                     st.markdown("</div>", unsafe_allow_html=True)
-
                 with c2:
                     st.markdown('<div class="card">', unsafe_allow_html=True)
                     st.markdown('<div style="font-size:11px;font-family:\'DM Mono\',monospace;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">Statement of Work</div>', unsafe_allow_html=True)
@@ -801,14 +980,12 @@ elif page == "Job Status":
                     else:
                         st.warning("SOW document unavailable")
                     st.markdown("</div>", unsafe_allow_html=True)
-
                 st.markdown(
                     f'<div class="card" style="margin-top:8px"><span style="font-size:12px;color:var(--text-muted)">Submitted</span>'
                     f'<span style="font-size:13px;color:var(--text);margin-left:16px">{format_time(job.get("created_at"))}</span></div>',
                     unsafe_allow_html=True
                 )
             break
-
         elif s == "failed":
             progress_ph.progress(100)
             content_ph.error("Analysis failed. Check logs or retry.")
@@ -817,16 +994,13 @@ elif page == "Job Status":
             p = min(p + 12, 80)
         elif s == "queued":
             p = 20
-
         progress_ph.progress(p)
         time.sleep(2)
-
 
 # ─────────────────────────────────────────────
 # PAGE: DASHBOARD
 # ─────────────────────────────────────────────
 elif page == "Dashboard":
-
     st.markdown('<div class="section-title">All Jobs</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-sub">Overview of all contract analysis jobs.</div>', unsafe_allow_html=True)
 
@@ -836,35 +1010,29 @@ elif page == "Dashboard":
         st.stop()
 
     jobs = r.json().get("jobs", [])
-
     if not jobs:
         st.info("No jobs found.")
         st.stop()
 
-    # Metrics row
-    total = len(jobs)
-    complete = sum(1 for j in jobs if j["status"].lower() == "complete")
+    total      = len(jobs)
+    complete   = sum(1 for j in jobs if j["status"].lower() == "complete")
     processing = sum(1 for j in jobs if j["status"].lower() in ["processing", "queued"])
-    failed = sum(1 for j in jobs if j["status"].lower() == "failed")
+    failed     = sum(1 for j in jobs if j["status"].lower() == "failed")
 
     m1, m2, m3, m4 = st.columns(4, gap="small")
     m1.markdown(f'<div class="metric-card"><div class="metric-label">Total Jobs</div><div class="metric-value">{total}</div></div>', unsafe_allow_html=True)
     m2.markdown(f'<div class="metric-card"><div class="metric-label">Completed</div><div class="metric-value" style="color:var(--green)">{complete}</div></div>', unsafe_allow_html=True)
     m3.markdown(f'<div class="metric-card"><div class="metric-label">In Progress</div><div class="metric-value" style="color:var(--amber)">{processing}</div></div>', unsafe_allow_html=True)
     m4.markdown(f'<div class="metric-card"><div class="metric-label">Failed</div><div class="metric-value" style="color:var(--red)">{failed}</div></div>', unsafe_allow_html=True)
-
     st.markdown("<br>", unsafe_allow_html=True)
 
     for idx, j in enumerate(reversed(jobs)):
-        jid = j["job_id"]
+        jid    = j["job_id"]
         status = j["status"].lower()
-
         with st.container():
             col_num, col_info, col_badge, col_time, col_actions = st.columns([0.4, 2.5, 1, 1.5, 1.5])
-
             with col_num:
                 st.markdown(f'<div class="job-num">#{total - idx}</div>', unsafe_allow_html=True)
-
             with col_info:
                 short = jid[:8] + "..." + jid[-6:] if len(jid) > 20 else jid
                 st.markdown(
@@ -872,14 +1040,11 @@ elif page == "Dashboard":
                     f'<div class="job-id-sub">{format_time(j.get("created_at"))}</div>',
                     unsafe_allow_html=True
                 )
-
             with col_badge:
                 st.markdown(f'<div style="padding-top:8px">{badge_html(status)}</div>', unsafe_allow_html=True)
-
             with col_time:
-                contract_type = j.get("contract_type", "auto").upper()
-                st.markdown(f'<div style="padding-top:8px;font-family:\'DM Mono\',monospace;font-size:12px;color:var(--text-muted)">{contract_type}</div>', unsafe_allow_html=True)
-
+                ct = j.get("contract_type", "auto").upper()
+                st.markdown(f'<div style="padding-top:8px;font-family:\'DM Mono\',monospace;font-size:12px;color:var(--text-muted)">{ct}</div>', unsafe_allow_html=True)
             with col_actions:
                 if status == "complete":
                     urls = j.get("download_urls", {})
@@ -894,23 +1059,29 @@ elif page == "Dashboard":
                     st.markdown('<div style="padding-top:8px"><span class="badge badge-warning">In progress</span></div>', unsafe_allow_html=True)
                 else:
                     st.markdown('<div style="padding-top:8px"><span class="badge badge-error">Failed</span></div>', unsafe_allow_html=True)
-
-            st.markdown('<div style="margin-bottom:8px"></div>', unsafe_allow_html=True)
-
+        st.markdown('<div style="margin-bottom:8px"></div>', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
-# PAGE: CONTRACT VIEWER (was Canonical Viewer)
+# PAGE: CONTRACT VIEWER
 # ─────────────────────────────────────────────
 elif page == "Contract Viewer":
-
     if "job_id" not in st.session_state:
         st.warning("No active job. Upload a contract first.")
         st.stop()
 
     job_id = st.session_state.job_id
 
-    st.markdown('<div class="section-title">Contract Viewer</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="section-sub" style="font-family:\'DM Mono\',monospace">{job_id}</div>', unsafe_allow_html=True)
+    # ── Gold banner indicating active page ──
+    st.markdown(f"""
+    <div class="cv-page-banner">
+      <div class="cv-page-banner-icon">📄</div>
+      <div>
+        <div class="cv-page-banner-label">Contract Viewer</div>
+        <div class="cv-page-banner-title">Canonical Analysis</div>
+      </div>
+      <div class="cv-page-banner-id">{job_id[:8]}…{job_id[-6:]}</div>
+    </div>
+    """, unsafe_allow_html=True)
 
     r = api_get(f"/download/{job_id}/canonical")
     if not r or r.status_code != 200:
@@ -918,30 +1089,25 @@ elif page == "Contract Viewer":
         st.stop()
 
     canonical = r.json()
-
-    tabs = st.tabs(["📋 Summary", "⚠ Conflicts", "🔍 Missing Fields", "{ } Raw JSON"])
+    tabs = st.tabs(["📋  Summary", "⚡  Conflicts", "🔍  Missing Fields", "{ }  Raw JSON"])
 
     # ── TAB: SUMMARY ──────────────────────────
     with tabs[0]:
         st.markdown("<br>", unsafe_allow_html=True)
-
-        # Try to pull key fields from canonical JSON for display
-        # Adapt keys to whatever your API actually returns
         display_fields = [
-            ("Contract Type",      canonical.get("contract_type") or canonical.get("type")),
-            ("Parties",            canonical.get("parties") or canonical.get("party_names")),
-            ("Effective Date",     canonical.get("effective_date")),
-            ("Expiry / End Date",  canonical.get("expiry_date") or canonical.get("end_date")),
-            ("Governing Law",      canonical.get("governing_law")),
-            ("Jurisdiction",       canonical.get("jurisdiction")),
-            ("Confidentiality",    canonical.get("confidentiality_period") or canonical.get("confidentiality")),
-            ("Payment Terms",      canonical.get("payment_terms")),
-            ("Scope of Work",      canonical.get("scope") or canonical.get("scope_of_work")),
-            ("Notice Period",      canonical.get("notice_period")),
+            ("Contract Type",        canonical.get("contract_type") or canonical.get("type")),
+            ("Parties",              canonical.get("parties") or canonical.get("party_names")),
+            ("Effective Date",       canonical.get("effective_date")),
+            ("Expiry / End Date",    canonical.get("expiry_date") or canonical.get("end_date")),
+            ("Governing Law",        canonical.get("governing_law")),
+            ("Jurisdiction",         canonical.get("jurisdiction")),
+            ("Confidentiality",      canonical.get("confidentiality_period") or canonical.get("confidentiality")),
+            ("Payment Terms",        canonical.get("payment_terms")),
+            ("Scope of Work",        canonical.get("scope") or canonical.get("scope_of_work")),
+            ("Notice Period",        canonical.get("notice_period")),
             ("Limitation of Liability", canonical.get("liability_limit") or canonical.get("limitation_of_liability")),
-            ("Termination",        canonical.get("termination_clause") or canonical.get("termination")),
+            ("Termination",          canonical.get("termination_clause") or canonical.get("termination")),
         ]
-
         st.markdown('<div class="card">', unsafe_allow_html=True)
         for key, val in display_fields:
             if val is None:
@@ -959,107 +1125,99 @@ elif page == "Contract Viewer":
                     f'<div class="summary-val">{val}</div></div>',
                     unsafe_allow_html=True
                 )
-
-        # Fallback: if no known fields matched, show a message
         matched = [v for _, v in display_fields if v is not None]
         if not matched:
             st.markdown('<div style="color:var(--text-muted);padding:20px 0;font-size:13px">No structured fields extracted. Check the Raw JSON tab.</div>', unsafe_allow_html=True)
-
         st.markdown("</div>", unsafe_allow_html=True)
 
     # ── TAB: CONFLICTS ────────────────────────
     with tabs[1]:
         st.markdown("<br>", unsafe_allow_html=True)
         conflicts = canonical.get("conflicts", [])
-
         if not conflicts:
             st.markdown("""
             <div style="display:flex;flex-direction:column;align-items:center;padding:48px 0;color:var(--text-muted)">
-                <div style="font-size:36px;margin-bottom:12px">✓</div>
-                <div style="font-family:'Syne',sans-serif;font-size:16px;color:var(--green);font-weight:600">No Conflicts Detected</div>
-                <div style="font-size:13px;margin-top:6px">All clauses across documents are consistent.</div>
+              <div style="font-size:36px;margin-bottom:12px">✓</div>
+              <div style="font-family:'Syne',sans-serif;font-size:16px;color:var(--green);font-weight:600">No Conflicts Detected</div>
+              <div style="font-size:13px;margin-top:6px">All clauses across documents are consistent.</div>
             </div>
             """, unsafe_allow_html=True)
         else:
-            st.markdown(f'<div style="margin-bottom:16px">{badge_html("failed")} <span style="font-size:13px;color:var(--text-muted);margin-left:8px">{len(conflicts)} conflict(s) found</span></div>', unsafe_allow_html=True)
+            # Bold conflict count — no "Failed" badge
+            st.markdown(f"""
+            <div class="conflict-count-header">
+              <div>
+                <div class="conflict-count-num">{len(conflicts)} conflict{'s' if len(conflicts) != 1 else ''} found</div>
+                <div class="conflict-count-label">Review each conflict below and verify resolution source</div>
+              </div>
+              <div class="conflict-count-icon">⚡</div>
+            </div>
+            """, unsafe_allow_html=True)
 
             for i, conflict in enumerate(conflicts):
-                # Support both dict-style and string-style conflicts
-                if isinstance(conflict, dict):
-                    field     = conflict.get("field", f"Conflict {i+1}")
-                    nda_val   = conflict.get("nda_value") or conflict.get("doc1") or conflict.get("value_a", "—")
-                    sow_val   = conflict.get("sow_value") or conflict.get("doc2") or conflict.get("value_b", "—")
-                    note      = conflict.get("note") or conflict.get("description", "")
-                else:
-                    # string fallback
-                    field   = f"Conflict {i+1}"
-                    nda_val = str(conflict)
-                    sow_val = "—"
-                    note    = ""
+                field    = conflict.get("field", f"Conflict {i+1}")
+                chosen   = conflict.get("chosen", "—")
+                source   = conflict.get("chosenSource", "—")
+                alts     = conflict.get("alternatives", [])
+                overridden = "; ".join(
+                    f"{a.get('source', '?')}: {str(a.get('value',''))}"
+                    for a in alts
+                ) or "—"
 
-                st.markdown(f"""
-                <div class="conflict-card">
-                    <div class="conflict-header">
-                        ⚡ {field}
-                        {"· <span style='font-size:11px;color:#888'>" + note + "</span>" if note else ""}
+                conflict_html = f"""
+                <div class="conflict-box">
+                  <div class="conflict-box-header">⚡ {field}</div>
+                  <div class="conflict-body">
+                    <div class="conflict-side">
+                      <div class="conflict-doc-label">Chosen Value</div>
+                      <div class="conflict-text">{chosen}</div>
                     </div>
-                    <div class="conflict-body">
-                        <div class="conflict-side">
-                            <div class="conflict-doc-label">NDA / Document A</div>
-                            <div class="conflict-text">{nda_val}</div>
-                        </div>
-                        <div class="conflict-side">
-                            <div class="conflict-doc-label">SOW / Document B</div>
-                            <div class="conflict-text">{sow_val}</div>
-                        </div>
+                    <div class="conflict-side">
+                      <div class="conflict-doc-label">Source</div>
+                      <div class="conflict-text">{source}</div>
                     </div>
+                    <div class="conflict-side">
+                      <div class="conflict-doc-label">Overridden</div>
+                      <div class="conflict-text">{overridden}</div>
+                    </div>
+                  </div>
                 </div>
-                """, unsafe_allow_html=True)
+                """
+                st.html(conflict_html)
 
     # ── TAB: MISSING FIELDS ───────────────────
     with tabs[2]:
         st.markdown("<br>", unsafe_allow_html=True)
         missing = canonical.get("missingFields") or canonical.get("missing_fields", [])
-
         if not missing:
             st.markdown("""
             <div style="display:flex;flex-direction:column;align-items:center;padding:48px 0;color:var(--text-muted)">
-                <div style="font-size:36px;margin-bottom:12px">✓</div>
-                <div style="font-family:'Syne',sans-serif;font-size:16px;color:var(--green);font-weight:600">All Fields Present</div>
-                <div style="font-size:13px;margin-top:6px">No missing fields identified in this contract.</div>
+              <div style="font-size:36px;margin-bottom:12px">✓</div>
+              <div style="font-family:'Syne',sans-serif;font-size:16px;color:var(--green);font-weight:600">All Fields Present</div>
+              <div style="font-size:13px;margin-top:6px">No missing fields identified in this contract.</div>
             </div>
             """, unsafe_allow_html=True)
         else:
-            st.markdown(f'<div style="margin-bottom:16px"><span class="badge badge-warning">⚠ {len(missing)} missing field(s)</span></div>', unsafe_allow_html=True)
-            for f in missing:
-                if isinstance(f, dict):
-                    label = f.get("field") or f.get("name", str(f))
-                    hint  = f.get("hint") or f.get("description", "Required for compliance")
-                else:
-                    label = str(f)
-                    hint  = "Required for compliance"
-
-                st.markdown(f"""
-                <div class="missing-row">
-                    <div class="missing-icon">⚠</div>
-                    <div class="missing-field">{label}</div>
-                    <div class="missing-hint">{hint}</div>
-                </div>
-                """, unsafe_allow_html=True)
+            st.markdown(f"""
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+              <span class="badge badge-warning">⚠ {len(missing)} missing field{'s' if len(missing) != 1 else ''}</span>
+              <span style="font-size:12px;color:var(--text-muted)">Grouped by section · click to expand</span>
+            </div>
+            """, unsafe_allow_html=True)
+            render_missing_fields_tree(missing)
 
     # ── TAB: RAW JSON ─────────────────────────
     with tabs[3]:
         st.markdown("<br>", unsafe_allow_html=True)
         st.code(json.dumps(canonical, indent=2), language="json")
 
-
 # ─────────────────────────────────────────────
 # FOOTER
 # ─────────────────────────────────────────────
-st.markdown("</div>", unsafe_allow_html=True)  # close main padding div
+st.markdown("</div>", unsafe_allow_html=True)
 st.markdown("""
 <div class="ey-footer">
-    <div>© 2026 Ernst & Young LLP · Contract Intelligence Platform</div>
-    <div>Internal Use Only · Do Not Distribute</div>
+  <div>© 2026 Ernst & Young LLP · Contract Intelligence Platform</div>
+  <div>Internal Use Only · Do Not Distribute</div>
 </div>
 """, unsafe_allow_html=True)
