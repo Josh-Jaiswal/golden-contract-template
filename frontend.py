@@ -1461,41 +1461,239 @@ elif page == "Contract Viewer":
     # ── TAB: SUMMARY ──────────────────────────
     with tabs[0]:
         st.markdown("<br>", unsafe_allow_html=True)
-        display_fields = [
-            ("Contract Type",        canonical.get("contract_type") or canonical.get("type")),
-            ("Parties",              canonical.get("parties") or canonical.get("party_names")),
-            ("Effective Date",       canonical.get("effective_date")),
-            ("Expiry / End Date",    canonical.get("expiry_date") or canonical.get("end_date")),
-            ("Governing Law",        canonical.get("governing_law")),
-            ("Jurisdiction",         canonical.get("jurisdiction")),
-            ("Confidentiality",      canonical.get("confidentiality_period") or canonical.get("confidentiality")),
-            ("Payment Terms",        canonical.get("payment_terms")),
-            ("Scope of Work",        canonical.get("scope") or canonical.get("scope_of_work")),
-            ("Notice Period",        canonical.get("notice_period")),
-            ("Limitation of Liability", canonical.get("liability_limit") or canonical.get("limitation_of_liability")),
-            ("Termination",          canonical.get("termination_clause") or canonical.get("termination")),
-        ]
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        for key, val in display_fields:
+
+        def fmt_val(v):
+            """Flatten any value to a clean readable string."""
+            if v is None:
+                return None
+            if isinstance(v, str):
+                s = v.strip()
+                return s if s else None
+            if isinstance(v, list):
+                # Filter empties, join as bullet list
+                items = [str(i).strip() for i in v if str(i).strip()]
+                return items if items else None
+            if isinstance(v, dict):
+                # Return dict as-is for structured rendering below
+                return v if any(val for val in v.values() if val not in (None, "", [], {})) else None
+            return str(v) if v else None
+
+        def render_summary_row(key, val, icon=""):
+            """Render one clean summary row — handles str, list, dict."""
             if val is None:
-                continue
-            if isinstance(val, (dict, list)):
-                val_str = json.dumps(val, indent=2)
-                st.markdown(
-                    f'<div class="summary-row"><div class="summary-key">{key}</div>'
-                    f'<pre style="font-family:\'DM Mono\',monospace;font-size:12px;color:var(--text-dim);background:var(--surface2);padding:10px;border-radius:6px;margin:0;overflow-x:auto">{val_str}</pre></div>',
-                    unsafe_allow_html=True
+                return
+            if isinstance(val, list):
+                bullets = "".join(
+                    f'<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:5px;">'
+                    f'<div style="color:var(--gold);margin-top:2px;font-size:10px;">▸</div>'
+                    f'<div style="font-size:13px;color:var(--text);line-height:1.5;">{item}</div>'
+                    f'</div>'
+                    for item in val
                 )
+                st.markdown(f"""
+                <div class="summary-row" style="align-items:flex-start;">
+                  <div class="summary-key">{icon} {key}</div>
+                  <div style="flex:1;padding-top:2px;">{bullets}</div>
+                </div>""", unsafe_allow_html=True)
+            elif isinstance(val, dict):
+                # Render sub-fields as pill pairs
+                pairs = "".join(
+                    f'<div style="display:flex;gap:8px;align-items:baseline;margin-bottom:6px;">'
+                    f'<div style="font-size:10px;font-family:\'DM Mono\',monospace;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.4px;min-width:120px;">{k}</div>'
+                    f'<div style="font-size:13px;color:var(--text);">{str(dv)}</div>'
+                    f'</div>'
+                    for k, dv in val.items()
+                    if dv not in (None, "", [], {})
+                )
+                if pairs:
+                    st.markdown(f"""
+                    <div class="summary-row" style="align-items:flex-start;">
+                      <div class="summary-key">{icon} {key}</div>
+                      <div style="flex:1;padding-top:2px;">{pairs}</div>
+                    </div>""", unsafe_allow_html=True)
             else:
                 st.markdown(
-                    f'<div class="summary-row"><div class="summary-key">{key}</div>'
-                    f'<div class="summary-val">{val}</div></div>',
+                    f'<div class="summary-row">'
+                    f'<div class="summary-key">{icon} {key}</div>'
+                    f'<div class="summary-val">{val}</div>'
+                    f'</div>',
                     unsafe_allow_html=True
                 )
-        matched = [v for _, v in display_fields if v is not None]
-        if not matched:
-            st.markdown('<div style="color:var(--text-muted);padding:20px 0;font-size:13px">No structured fields extracted. Check the Raw JSON tab.</div>', unsafe_allow_html=True)
+
+        # ── Parties block ──
+        parties = canonical.get("parties", {})
+        client  = parties.get("client", {})
+        vendor  = parties.get("vendor", {})
+
+        st.markdown("""
+        <div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;
+             color:var(--text-muted);letter-spacing:1.2px;text-transform:uppercase;
+             margin-bottom:10px;">Parties</div>
+        """, unsafe_allow_html=True)
+        st.markdown('<div class="card" style="margin-bottom:16px;">', unsafe_allow_html=True)
+
+        if client.get("name") or vendor.get("name"):
+            col_c, col_v = st.columns(2, gap="large")
+            with col_c:
+                st.markdown(f"""
+                <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text-muted);
+                     text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Client</div>
+                <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px;">
+                    {client.get("name","—")}</div>
+                {"".join(f'<div style="font-size:11px;color:var(--text-muted);">✍ {s.get("name","")} · {s.get("title","")}</div>' for s in client.get("signatories",[]) if s.get("name"))}
+                """, unsafe_allow_html=True)
+            with col_v:
+                st.markdown(f"""
+                <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text-muted);
+                     text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Vendor</div>
+                <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px;">
+                    {vendor.get("name","—")}</div>
+                {"".join(f'<div style="font-size:11px;color:var(--text-muted);">✍ {s.get("name","")} · {s.get("title","")}</div>' for s in vendor.get("signatories",[]) if s.get("name"))}
+                """, unsafe_allow_html=True)
+        else:
+            st.markdown('<div style="color:var(--text-muted);font-size:13px;">No party information extracted.</div>', unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
+
+        # ── Dates block ──
+        dates = canonical.get("dates", {})
+        date_fields = {
+            "Effective Date":  dates.get("effectiveDate") or canonical.get("effective_date"),
+            "Expiry Date":     dates.get("expiryDate")    or canonical.get("expiry_date"),
+            "Execution Date":  dates.get("executionDate"),
+            "Review Date":     dates.get("reviewDate"),
+        }
+        date_fields = {k: v for k, v in date_fields.items() if v}
+        if date_fields:
+            st.markdown("""<div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;
+                 color:var(--text-muted);letter-spacing:1.2px;text-transform:uppercase;
+                 margin-bottom:10px;">Dates</div>""", unsafe_allow_html=True)
+            st.markdown('<div class="card" style="margin-bottom:16px;">', unsafe_allow_html=True)
+            cols = st.columns(len(date_fields), gap="small")
+            for col, (label, val) in zip(cols, date_fields.items()):
+                with col:
+                    st.markdown(f"""
+                    <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text-muted);
+                         text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">{label}</div>
+                    <div style="font-size:14px;font-weight:600;color:var(--text);">{val}</div>
+                    """, unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # ── Legal block ──
+        legal = canonical.get("legal", {})
+        legal_fields = {
+            "Governing Law":          legal.get("governingLaw")    or canonical.get("governing_law"),
+            "Jurisdiction":           legal.get("jurisdiction")    or canonical.get("jurisdiction"),
+            "Liability Cap":          legal.get("liabilityCap")    or canonical.get("liability_limit"),
+            "IP Ownership":           legal.get("ipOwnership"),
+            "Dispute Resolution":     legal.get("disputeResolution"),
+        }
+        legal_fields = {k: v for k, v in legal_fields.items() if v}
+        if legal_fields:
+            st.markdown("""<div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;
+                 color:var(--text-muted);letter-spacing:1.2px;text-transform:uppercase;
+                 margin-bottom:10px;">Legal</div>""", unsafe_allow_html=True)
+            st.markdown('<div class="card" style="margin-bottom:16px;">', unsafe_allow_html=True)
+            for label, val in legal_fields.items():
+                render_summary_row(label, fmt_val(val))
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # ── Confidentiality block ──
+        conf = canonical.get("confidentiality", {})
+        conf_term        = conf.get("term")         or canonical.get("confidentiality_period")
+        conf_obligations = conf.get("obligations",  [])
+        conf_exceptions  = conf.get("exceptions",   [])
+        if conf_term or conf_obligations or conf_exceptions:
+            st.markdown("""<div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;
+                 color:var(--text-muted);letter-spacing:1.2px;text-transform:uppercase;
+                 margin-bottom:10px;">Confidentiality</div>""", unsafe_allow_html=True)
+            st.markdown('<div class="card" style="margin-bottom:16px;">', unsafe_allow_html=True)
+            if conf_term:
+                render_summary_row("Term", fmt_val(conf_term))
+            if conf_obligations:
+                render_summary_row("Obligations", fmt_val(conf_obligations))
+            if conf_exceptions:
+                render_summary_row("Exceptions", fmt_val(conf_exceptions))
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # ── Scope of Work block ──
+        scope = canonical.get("scope", {})
+        scope_desc    = scope.get("description")   or canonical.get("scope_of_work")
+        scope_deliv   = scope.get("deliverables",  [])
+        scope_out     = scope.get("outOfScope",    [])
+        scope_miles   = scope.get("milestones",    [])
+        if scope_desc or scope_deliv or scope_out:
+            st.markdown("""<div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;
+                 color:var(--text-muted);letter-spacing:1.2px;text-transform:uppercase;
+                 margin-bottom:10px;">Scope of Work</div>""", unsafe_allow_html=True)
+            st.markdown('<div class="card" style="margin-bottom:16px;">', unsafe_allow_html=True)
+            if scope_desc:
+                render_summary_row("Description", fmt_val(scope_desc))
+            if scope_deliv:
+                render_summary_row("Deliverables", fmt_val(scope_deliv) if isinstance(scope_deliv, list) else fmt_val(scope_deliv))
+            if scope_out:
+                render_summary_row("Out of Scope", fmt_val(scope_out) if isinstance(scope_out, list) else fmt_val(scope_out))
+            if scope_miles:
+                render_summary_row("Milestones", fmt_val(scope_miles) if isinstance(scope_miles, list) else fmt_val(scope_miles))
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # ── Commercials block ──
+        comm = canonical.get("commercials", {})
+        comm_fields = {
+            "Total Value":     comm.get("totalValue"),
+            "Currency":        comm.get("currency"),
+            "Payment Terms":   comm.get("paymentTerms") or canonical.get("payment_terms"),
+            "Pricing Model":   comm.get("pricingModel"),
+            "Taxes":           comm.get("taxes"),
+        }
+        comm_fields = {k: v for k, v in comm_fields.items() if v}
+        if comm_fields:
+            st.markdown("""<div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;
+                 color:var(--text-muted);letter-spacing:1.2px;text-transform:uppercase;
+                 margin-bottom:10px;">Commercials</div>""", unsafe_allow_html=True)
+            st.markdown('<div class="card" style="margin-bottom:16px;">', unsafe_allow_html=True)
+            for label, val in comm_fields.items():
+                render_summary_row(label, fmt_val(val))
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # ── Security block ──
+        sec = canonical.get("security", {})
+        sec_fields = {
+            "Data Residency":        sec.get("dataResidency"),
+            "Compliance Standard":   sec.get("complianceStandard"),
+            "Personal Data Processing": sec.get("personalDataProcessing"),
+            "Privacy Requirements":  sec.get("privacyRequirements"),
+        }
+        sec_fields = {k: v for k, v in sec_fields.items() if v}
+        if sec_fields:
+            st.markdown("""<div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;
+                 color:var(--text-muted);letter-spacing:1.2px;text-transform:uppercase;
+                 margin-bottom:10px;">Security & Privacy</div>""", unsafe_allow_html=True)
+            st.markdown('<div class="card" style="margin-bottom:16px;">', unsafe_allow_html=True)
+            for label, val in sec_fields.items():
+                render_summary_row(label, fmt_val(val))
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # ── Project Governance block ──
+        pg = canonical.get("projectGovernance", {})
+        pg_fields = {
+            "Project Timeline":  pg.get("projectTimeline"),
+            "Kickoff Date":      pg.get("kickoffDate"),
+            "Review Milestones": pg.get("reviewMilestones"),
+        }
+        pg_fields = {k: v for k, v in pg_fields.items() if v}
+        if pg_fields:
+            st.markdown("""<div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;
+                 color:var(--text-muted);letter-spacing:1.2px;text-transform:uppercase;
+                 margin-bottom:10px;">Project Governance</div>""", unsafe_allow_html=True)
+            st.markdown('<div class="card" style="margin-bottom:16px;">', unsafe_allow_html=True)
+            for label, val in pg_fields.items():
+                render_summary_row(label, fmt_val(val))
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # Fallback if nothing rendered
+        all_blocks = [parties, dates, legal, conf, scope, comm, sec, pg]
+        if not any(bool(b) for b in all_blocks):
+            st.markdown('<div style="color:var(--text-muted);padding:20px 0;font-size:13px">No structured fields extracted. Check the Raw JSON tab.</div>', unsafe_allow_html=True)
 
     # ── TAB: CONFLICTS ────────────────────────
     with tabs[1]:
@@ -1536,11 +1734,28 @@ elif page == "Contract Viewer":
                 source  = conflict.get("chosenSource", "—")
                 alts    = conflict.get("alternatives", [])
 
+                def _clean_conflict_val(v):
+                    """Flatten list values and strip noise for display."""
+                    if isinstance(v, list):
+                        parts = [str(x).strip().strip('"\'') for x in v if str(x).strip()]
+                        return " · ".join(parts) if parts else "—"
+                    s = str(v).strip()
+                    # Remove outer list brackets that sometimes leak through e.g. ["value"]
+                    if s.startswith("[") and s.endswith("]"):
+                        inner = s[1:-1].strip().strip('"\'')
+                        return inner if inner else "—"
+                    return s if s else "—"
+
+                chosen_display = _clean_conflict_val(chosen)
+                chosen_short   = chosen_display[:80] + "…" if len(chosen_display) > 80 else chosen_display
+
                 # Build the radio options: chosen + each alternative + custom
-                radio_options = [f"✅ Keep chosen  ·  {chosen}  [{source}]"]
+                radio_options = [f"✅ Keep chosen  ·  {chosen_short}  [{source}]"]
                 alt_values    = []
                 for a in alts:
-                    alt_label = f"🔄 Use overridden  ·  {str(a.get('value','—'))}  [{a.get('source','?')}]"
+                    alt_display = _clean_conflict_val(a.get("value", "—"))
+                    alt_short   = alt_display[:80] + "…" if len(alt_display) > 80 else alt_display
+                    alt_label   = f"🔄 Use overridden  ·  {alt_short}  [{a.get('source','?')}]"
                     radio_options.append(alt_label)
                     alt_values.append(str(a.get("value", "")))
                 radio_options.append("✏️ Enter custom value")
@@ -1572,7 +1787,7 @@ elif page == "Contract Viewer":
                   <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px;">
                     <div>
                       <div style="font-size:10px;color:var(--text-muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">Chosen Value</div>
-                      <div style="font-size:13px;color:var(--text);font-weight:500;">{chosen}</div>
+                      <div style="font-size:13px;color:var(--text);font-weight:500;">{chosen_display}</div>
                     </div>
                     <div>
                       <div style="font-size:10px;color:var(--text-muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">Source</div>
@@ -1580,7 +1795,7 @@ elif page == "Contract Viewer":
                     </div>
                     {"".join(f'''<div>
                       <div style="font-size:10px;color:var(--text-muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">Overridden · {a.get("source","?")}</div>
-                      <div style="font-size:13px;color:#aaa;">{str(a.get("value","—"))}</div>
+                      <div style="font-size:13px;color:#aaa;">{_clean_conflict_val(a.get("value","—"))}</div>
                     </div>''' for a in alts)}
                   </div>
                 </div>
@@ -1736,13 +1951,149 @@ elif page == "Contract Viewer":
             </div>
             """, unsafe_allow_html=True)
         else:
+            # ── Session state for missing field fills ──────────────────
+            if "missing_fills" not in st.session_state:
+                st.session_state.missing_fills = {}
+
+            filled_count = sum(
+                1 for f in missing
+                if st.session_state.missing_fills.get(
+                    f if isinstance(f, str) else f.get("field", str(f)), ""
+                ).strip()
+            )
+
             st.markdown(f"""
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
               <span class="badge badge-warning">⚠ {len(missing)} missing field{'s' if len(missing) != 1 else ''}</span>
-              <span style="font-size:12px;color:var(--text-muted)">Grouped by section · click to expand</span>
+              <span style="font-size:12px;color:var(--text-muted);">
+                Grouped by section · fill in values to include them in a regenerated document
+              </span>
             </div>
             """, unsafe_allow_html=True)
-            render_missing_fields_tree(missing)
+
+            # ── Group and render with fillable inputs ─────────────────
+            sections = group_missing_fields(missing)
+
+            for sec_key, items in sections.items():
+                meta   = SECTION_META.get(sec_key, {"icon": "📋", "label": sec_key.capitalize()})
+                filled_in_section = sum(
+                    1 for item in items
+                    if st.session_state.missing_fills.get(item["full"], "").strip()
+                )
+                header_suffix = f" · {filled_in_section}/{len(items)} filled" if filled_in_section else f" · {len(items)} missing"
+                header = f"{meta['icon']} {meta['label']}{header_suffix}"
+
+                with st.expander(header, expanded=False):
+                    for item in items:
+                        field_key = item["full"]
+                        current   = st.session_state.missing_fills.get(field_key, "")
+
+                        # Field card header
+                        st.markdown(f"""
+                        <div style="
+                            background: var(--surface2);
+                            border: 1px solid {'rgba(255,230,0,0.25)' if current.strip() else '#2d2d35'};
+                            border-left: 3px solid {'var(--gold)' if current.strip() else '#ffcf4c'};
+                            border-radius: 8px;
+                            padding: 10px 14px 4px 14px;
+                            margin-bottom: 4px;
+                        ">
+                          <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+                            <div style="font-size:{'14px' if current.strip() else '13px'};color:{'var(--gold)' if current.strip() else '#ffcf4c'};">
+                                {'✅' if current.strip() else '⚠'}
+                            </div>
+                            <div style="font-size:13px;font-weight:600;color:var(--text);">{item['label']}</div>
+                            <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text-muted);
+                                 background:var(--surface);border:1px solid #2a2a2a;border-radius:4px;
+                                 padding:1px 7px;">{field_key}</div>
+                          </div>
+                          <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">{item['hint']}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                        # Text input below the card
+                        new_val = st.text_input(
+                            f"Value for {item['label']}",
+                            value=current,
+                            key=f"missing_{field_key}",
+                            placeholder=f"Enter {item['label'].lower()}…",
+                            label_visibility="collapsed",
+                        )
+                        st.session_state.missing_fills[field_key] = new_val
+                        st.markdown("<div style='margin-bottom:10px'></div>", unsafe_allow_html=True)
+
+            # ── Scroll nudge once any field is filled ──────────────────
+            filled_count = sum(
+                1 for item in [i for sec in sections.values() for i in sec]
+                if st.session_state.missing_fills.get(item["full"], "").strip()
+            )
+
+            if filled_count > 0:
+                st.markdown(f"""
+                <div style="
+                    display:flex;align-items:center;gap:12px;
+                    background:rgba(255,230,0,0.06);
+                    border:1px solid rgba(255,230,0,0.2);
+                    border-radius:8px;
+                    padding:12px 18px;
+                    margin:16px 0 20px 0;
+                ">
+                  <div style="font-size:18px;">👇</div>
+                  <div>
+                    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:600;color:var(--gold);">
+                        {filled_count} field{'s' if filled_count != 1 else ''} filled in
+                    </div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
+                        Scroll down to regenerate your documents with these values included
+                    </div>
+                  </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # ── Regenerate button ──────────────────────────────────────
+            st.markdown('<div style="border-top:1px solid #222;margin:16px 0 20px 0;"></div>', unsafe_allow_html=True)
+
+            regen_label_mf = f"⚡ Regenerate Documents ({filled_count} field{'s' if filled_count != 1 else ''} added)" if filled_count > 0 else "⚡ Regenerate Documents"
+
+            if filled_count > 0:
+                st.markdown("""
+                <style>
+                div[data-testid="stButton"] > button[kind="primary"] {
+                    box-shadow: 0 0 18px rgba(255,230,0,0.35), 0 0 6px rgba(255,230,0,0.2);
+                    animation: pulseBtn 2s ease-in-out infinite;
+                }
+                </style>
+                """, unsafe_allow_html=True)
+
+            if st.button(regen_label_mf, type="primary", use_container_width=True, key="regen_missing"):
+                fills = {
+                    item["full"]: st.session_state.missing_fills[item["full"]]
+                    for sec in sections.values()
+                    for item in sec
+                    if st.session_state.missing_fills.get(item["full"], "").strip()
+                }
+                if not fills:
+                    st.warning("Fill in at least one field value before regenerating.")
+                else:
+                    with st.spinner("Submitting filled values and queuing regeneration…"):
+                        try:
+                            r = requests.post(
+                                f"{API_URL}/jobs/{job_id}/regenerate",
+                                headers={"X-API-Key": API_KEY},
+                                json={"overrides": fills},
+                            )
+                            if r.status_code == 200:
+                                st.session_state.job_id = r.json().get("job_id", job_id)
+                                st.session_state.missing_fills = {}
+                                st.session_state.page = "Job Status"
+                                st.rerun()
+                            elif r.status_code == 404:
+                                st.error("The /regenerate endpoint isn't deployed yet.")
+                                st.code(json.dumps({"endpoint": f"POST /jobs/{job_id}/regenerate", "body": {"overrides": fills}}, indent=2), language="json")
+                            else:
+                                st.error(f"API error {r.status_code}: {r.text}")
+                        except Exception as e:
+                            st.error(f"Connection failed: {e}")
 
     # ── TAB: RAW JSON ─────────────────────────
     with tabs[3]:
