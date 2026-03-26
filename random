@@ -1,17 +1,20 @@
-# ── Azure Speech Services (for audio transcription) ──────────────────────────
-# Create in Azure Portal → + Create a resource → Speech
-# Free tier: 5 hours/month | Standard: ~$1/hour
-AZURE_SPEECH_KEY=your_speech_key_here
-AZURE_SPEECH_REGION=uksouth          # e.g. uksouth, eastus, westeurope
+# Step 1 — run_pipeline(...)      ← keep as-is
+# Step 2 — save canonical JSON    ← keep as-is
 
-# ── Azure OpenAI (for transcript field extraction) ────────────────────────────
-# Create in Azure Portal → + Create a resource → Azure OpenAI
-# Then deploy a model: Azure OpenAI Studio → Deployments → + Create
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-AZURE_OPENAI_KEY=your_openai_key_here
-AZURE_OPENAI_DEPLOYMENT=gpt-4o-mini  # your deployment name, not the model name
+# ↓ REPLACE the old 4 lines (Steps 3 & 4) with this:
+outputs = {"canonical": str(canonical_path)}
 
-# ── Azure Blob Storage (already in your .env — audio uses same account) ───────
-# Audio files go into a separate container: "audio-staging"
-# This container is auto-created on first audio upload.
-# AZURE_BLOB_CONNECTION_STR=already_set
+generate_nda = contract_type in ("nda", "auto", "both")
+generate_sow = contract_type in ("sow", "auto", "both")
+
+if generate_nda:
+    nda_path = str(job_output_dir / "generated-nda.pdf")
+    generate_pdf(canonical, "nda", nda_path)
+    outputs["nda_pdf"] = nda_path
+
+if generate_sow:
+    sow_path = str(job_output_dir / "generated-sow.pdf")
+    generate_pdf(canonical, "sow", sow_path)
+    outputs["sow_pdf"] = sow_path
+
+return outputs   # ← your existing return, now returns the new dict
