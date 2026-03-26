@@ -944,45 +944,70 @@ for i, p in enumerate(pages):
 
 page = st.session_state.page
 
-# ── Active nav button highlight ──
-# Each nav button gets a unique key; we inject CSS to highlight the active one.
-_active_idx = page_map.get(page, 0)
-_nav_keys = ["nav_Upload & Analyze", "nav_Job Status", "nav_Dashboard", "nav_Contract Viewer"]
-_active_key = _nav_keys[_active_idx]
-st.markdown(f"""
-<style>
-/* Active nav button — gold background, black text */
-div[data-testid="stButton"] button[kind="secondary"] {{
-  background: transparent !important;
-  color: var(--text-muted) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 8px !important;
-}}
-/* We target via aria-label which Streamlit sets from the button label */
-div[data-testid="stButton"]:has(button[data-testid="baseButton-secondary"]) {{}}
-</style>
-<style>
-/* Fallback: mark the active nav button using nth-child based on column order */
-div[data-testid="column"]:nth-child({_active_idx + 1}) > div[data-testid="stButton"] > button {{
+# ── Nav button active-state styling ──────────────────────────────────────────
+# Streamlit renders each button inside a div whose data-testid = stButton,
+# wrapped in a div with a data-testid="element-container" that has a unique
+# key attribute. We can target via the button's own key using the aria-label
+# or via the surrounding column structure.
+# Most reliable: override global gold for ALL nav buttons to dark, then
+# re-apply gold ONLY to the active one using its specific key selector.
+_active_page = st.session_state.page
+
+# Build one CSS block: first reset ALL nav buttons to dark style,
+# then highlight only the active one.
+_nav_css_parts = []
+for _p in pages:
+    _safe_key = f"nav_{_p}"
+    if _p == _active_page:
+        # Active: gold fill
+        _nav_css_parts.append(f"""
+div[data-testid="stButton"]:has(button[key="{_safe_key}"]) > button,
+button[data-testid="baseButton-secondary"][key="{_safe_key}"] {{
   background: var(--gold) !important;
   color: #000 !important;
   border: 1px solid var(--gold) !important;
   font-weight: 700 !important;
-  box-shadow: 0 0 12px rgba(255,230,0,0.25) !important;
+  box-shadow: 0 0 14px rgba(255,230,0,0.28) !important;
+  opacity: 1 !important;
+}}""")
+
+# The truly reliable approach in Streamlit: use nth-of-type on the columns
+# combined with overriding the global .stButton > button for nav area only.
+# We wrap nav in a container via surrounding columns and use nth-child.
+_active_idx = page_map.get(_active_page, 0)  # 0-based
+
+st.markdown(f"""
+<style>
+/* ── Step 1: Reset ALL buttons in the first 4 columns of the nav row to dark ── */
+/* We target them by their position in the stHorizontalBlock (the columns container) */
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"] > div[data-testid="stVerticalBlock"] > div[data-testid="element-container"] > div[data-testid="stButton"] > button {{
+  background: #1a1a1a !important;
+  color: #888 !important;
+  border: 1px solid #2e2e2e !important;
+  font-weight: 500 !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
 }}
-/* Non-active nav buttons */
-div[data-testid="column"]:not(:nth-child({_active_idx + 1})) > div[data-testid="stButton"] > button {{
-  background: var(--surface2) !important;
-  color: var(--text-muted) !important;
-  border: 1px solid var(--border) !important;
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"] > div[data-testid="stVerticalBlock"] > div[data-testid="element-container"] > div[data-testid="stButton"] > button:hover {{
+  background: #252525 !important;
+  color: #ccc !important;
+  border-color: #3a3a3a !important;
 }}
-div[data-testid="column"]:not(:nth-child({_active_idx + 1})) > div[data-testid="stButton"] > button:hover {{
-  background: var(--surface) !important;
-  color: var(--text) !important;
-  border-color: var(--border-bright) !important;
+
+/* ── Step 2: Re-apply gold to ONLY the active nav button via nth-child ── */
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child({_active_idx + 1}) > div[data-testid="stVerticalBlock"] > div[data-testid="element-container"] > div[data-testid="stButton"] > button {{
+  background: var(--gold) !important;
+  color: #000 !important;
+  border: 1px solid var(--gold) !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 14px rgba(255,230,0,0.28) !important;
+}}
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child({_active_idx + 1}) > div[data-testid="stVerticalBlock"] > div[data-testid="element-container"] > div[data-testid="stButton"] > button:hover {{
+  opacity: 0.88 !important;
 }}
 </style>
 """, unsafe_allow_html=True)
+
 st.markdown('<div style="padding: 32px 32px 0 32px;">', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
@@ -1518,127 +1543,118 @@ elif page == "Contract Viewer":
                 return v if any(val for val in v.values() if val not in (None, "", [], {})) else None
             return str(v) if v else None
 
-        # ── Session state for inline summary edits ──
+        # ── Session state for inline summary edits ──────────────────────
         if "summary_edits" not in st.session_state:
-            st.session_state.summary_edits = {}        # {field_key: edited_value}
+            st.session_state.summary_edits = {}      # {field_key: new_str_value}
         if "summary_editing" not in st.session_state:
-            st.session_state.summary_editing = set()   # set of field_keys currently in edit mode
+            st.session_state.summary_editing = set() # field_keys currently open
 
-        # CSS for the edit icon and inline edit UI
         st.markdown("""
         <style>
-        .summary-edit-btn {
-          background: none;
-          border: none;
-          cursor: pointer;
-          color: var(--text-muted);
-          font-size: 12px;
-          padding: 2px 5px;
-          border-radius: 4px;
-          transition: all 0.15s;
-          opacity: 0.5;
-          line-height: 1;
+        /* Pencil edit button next to each summary field */
+        div[data-testid="stButton"] > button[title^="Edit "] {
+          background: transparent !important;
+          border: 1px solid transparent !important;
+          color: #555 !important;
+          padding: 2px 7px !important;
+          font-size: 11px !important;
+          min-height: unset !important;
+          height: 26px !important;
+          box-shadow: none !important;
+          font-weight: 400 !important;
+          transition: all 0.15s !important;
         }
-        .summary-row:hover .summary-edit-btn { opacity: 1; }
-        .summary-edit-btn:hover {
-          background: var(--gold-dim);
-          color: var(--gold);
-          opacity: 1;
+        div[data-testid="stButton"] > button[title^="Edit "]:hover {
+          background: rgba(255,230,0,0.12) !important;
+          border-color: rgba(255,230,0,0.3) !important;
+          color: var(--gold) !important;
         }
-        .summary-edited-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          font-size: 10px;
-          font-family: 'DM Mono', monospace;
-          color: var(--gold);
-          background: var(--gold-dim);
-          border: 1px solid rgba(255,230,0,0.2);
-          border-radius: 4px;
-          padding: 1px 6px;
-          margin-left: 6px;
+        /* Save / Cancel inline buttons */
+        div[data-testid="stButton"] > button[title="Save"],
+        div[data-testid="stButton"] > button[title="Cancel"] {
+          background: transparent !important;
+          border: 1px solid #333 !important;
+          color: #aaa !important;
+          padding: 2px 8px !important;
+          font-size: 12px !important;
+          min-height: unset !important;
+          height: 28px !important;
+          box-shadow: none !important;
+          font-weight: 500 !important;
         }
-        .summary-regen-bar {
-          position: sticky;
-          bottom: 0;
-          background: linear-gradient(to top, var(--bg) 70%, transparent);
-          padding: 20px 0 12px 0;
-          margin-top: 24px;
-          z-index: 50;
+        div[data-testid="stButton"] > button[title="Save"]:hover {
+          background: rgba(0,232,122,0.12) !important;
+          border-color: var(--green) !important;
+          color: var(--green) !important;
         }
-        .summary-regen-counter {
-          font-family: 'Syne', sans-serif;
-          font-size: 13px;
-          font-weight: 600;
-          color: var(--gold);
-          margin-bottom: 10px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
+        div[data-testid="stButton"] > button[title="Cancel"]:hover {
+          background: rgba(255,77,77,0.1) !important;
+          border-color: var(--red) !important;
+          color: var(--red) !important;
         }
         </style>
         """, unsafe_allow_html=True)
 
-        def _field_key(key):
-            """Normalise a field label to a safe session-state key."""
-            return "summ_" + key.lower().replace(" ", "_").replace("/", "_")
+        def _fk(key):
+            return "summ__" + key.lower().replace(" ", "_").replace("/", "_")
 
         def render_summary_row(key, val, icon=""):
-            """Render one clean summary row with inline edit pencil icon."""
+            """Render one clean summary row with inline pencil-edit support."""
             if val is None:
                 return
 
-            fk = _field_key(key)
+            fk         = _fk(key)
             is_editing = fk in st.session_state.summary_editing
             is_edited  = fk in st.session_state.summary_edits
 
-            # Display value (may have been overridden by an edit)
+            # If edited, display the overridden value instead
             display_val = st.session_state.summary_edits.get(fk, val)
 
-            # ── Flatten val for display / edit default ──
+            # Flatten to string for the text area
             if isinstance(display_val, list):
-                flat_display = "\n".join(str(i) for i in display_val)
+                flat = "\n".join(str(i) for i in display_val)
             elif isinstance(display_val, dict):
-                flat_display = "\n".join(f"{k}: {v}" for k, v in display_val.items() if v not in (None, "", [], {}))
+                flat = "\n".join(f"{k}: {v}" for k, v in display_val.items() if v not in (None, "", [], {}))
             else:
-                flat_display = str(display_val)
-
-            # ── Edited badge HTML ──
-            edited_badge = '<span class="summary-edited-badge">✎ edited</span>' if is_edited else ""
-
-            # ── Edit toggle button ──
-            edit_btn_key  = f"editbtn_{fk}"
-            close_btn_key = f"closebtn_{fk}"
+                flat = str(display_val) if display_val is not None else ""
 
             if not is_editing:
-                # ── Render read-mode row with pencil icon ──
-                if isinstance(val, list) and not is_edited:
+                # ── Read mode: render value + small pencil icon ──
+                edited_pill = (
+                    '<span style="display:inline-flex;align-items:center;gap:3px;'
+                    'font-size:10px;font-family:\'DM Mono\',monospace;color:var(--gold);'
+                    'background:rgba(255,230,0,0.1);border:1px solid rgba(255,230,0,0.25);'
+                    'border-radius:4px;padding:1px 6px;margin-left:8px;">✎ edited</span>'
+                ) if is_edited else ""
+
+                if isinstance(display_val, list) and not is_edited:
                     bullets = "".join(
                         f'<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:5px;">'
                         f'<div style="color:var(--gold);margin-top:2px;font-size:10px;">▸</div>'
                         f'<div style="font-size:13px;color:var(--text);line-height:1.5;">{item}</div>'
                         f'</div>'
-                        for item in val
+                        for item in display_val
                     )
                     val_html = f'<div style="flex:1;padding-top:2px;">{bullets}</div>'
-                elif isinstance(val, dict) and not is_edited:
+                elif isinstance(display_val, dict) and not is_edited:
                     pairs = "".join(
                         f'<div style="display:flex;gap:8px;align-items:baseline;margin-bottom:6px;">'
-                        f'<div style="font-size:10px;font-family:\'DM Mono\',monospace;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.4px;min-width:120px;">{k}</div>'
+                        f'<div style="font-size:10px;font-family:\'DM Mono\',monospace;color:var(--text-muted);'
+                        f'text-transform:uppercase;letter-spacing:0.4px;min-width:120px;">{k}</div>'
                         f'<div style="font-size:13px;color:var(--text);">{str(dv)}</div>'
                         f'</div>'
-                        for k, dv in val.items()
+                        for k, dv in display_val.items()
                         if dv not in (None, "", [], {})
                     )
-                    val_html = f'<div style="flex:1;padding-top:2px;">{pairs}</div>' if pairs else None
                     if not pairs:
                         return
+                    val_html = f'<div style="flex:1;padding-top:2px;">{pairs}</div>'
                 else:
-                    color = "var(--gold)" if is_edited else "var(--text)"
-                    val_html = f'<div class="summary-val" style="color:{color};">{flat_display}{edited_badge}</div>'
+                    val_color = "var(--gold)" if is_edited else "var(--text)"
+                    val_html = f'<div class="summary-val" style="color:{val_color};">{flat}{edited_pill}</div>'
 
-                col_row, col_btn = st.columns([20, 1])
-                with col_row:
+                col_val, col_btn = st.columns([22, 1])
+                with col_val:
                     st.markdown(
                         f'<div class="summary-row" style="align-items:flex-start;">'
                         f'<div class="summary-key">{icon} {key}</div>'
@@ -1647,41 +1663,42 @@ elif page == "Contract Viewer":
                         unsafe_allow_html=True
                     )
                 with col_btn:
-                    st.markdown('<div style="padding-top:12px;">', unsafe_allow_html=True)
-                    if st.button("✎", key=edit_btn_key, help=f"Edit {key}"):
+                    st.markdown('<div style="padding-top:10px">', unsafe_allow_html=True)
+                    if st.button("✎", key=f"editbtn_{fk}", help=f"Edit {key}"):
                         st.session_state.summary_editing.add(fk)
                         st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
             else:
-                # ── Render edit-mode row ──
+                # ── Edit mode ──
                 st.markdown(
-                    f'<div class="summary-row" style="align-items:flex-start;border-color:rgba(255,230,0,0.3);">'
-                    f'<div class="summary-key" style="color:var(--gold);">{icon} {key}</div>',
+                    f'<div style="padding:4px 0 2px 0;font-family:\'DM Mono\',monospace;font-size:11px;'
+                    f'color:var(--gold);text-transform:uppercase;letter-spacing:0.6px;">'
+                    f'{icon} {key}</div>',
                     unsafe_allow_html=True
                 )
-                col_input, col_save, col_cancel = st.columns([14, 1.5, 1.5])
-                with col_input:
+                col_inp, col_save, col_cancel = st.columns([16, 1.2, 1.2])
+                with col_inp:
                     new_val = st.text_area(
-                        f"Edit {key}",
-                        value=flat_display,
+                        f"edit_{key}",
+                        value=flat,
                         key=f"editinput_{fk}",
                         label_visibility="collapsed",
-                        height=80,
+                        height=72,
                     )
                 with col_save:
-                    st.markdown('<div style="padding-top:4px;">', unsafe_allow_html=True)
-                    if st.button("✓", key=f"save_{fk}", help="Save edit"):
+                    st.markdown('<div style="padding-top:6px">', unsafe_allow_html=True)
+                    if st.button("✓", key=f"save_{fk}", help="Save"):
                         st.session_state.summary_edits[fk] = new_val
                         st.session_state.summary_editing.discard(fk)
                         st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
                 with col_cancel:
-                    st.markdown('<div style="padding-top:4px;">', unsafe_allow_html=True)
-                    if st.button("✕", key=f"cancel_{fk}", help="Cancel edit"):
+                    st.markdown('<div style="padding-top:6px">', unsafe_allow_html=True)
+                    if st.button("✕", key=f"cancel_{fk}", help="Cancel"):
                         st.session_state.summary_editing.discard(fk)
                         st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown('<div style="border-bottom:1px solid var(--border);margin-bottom:4px"></div>', unsafe_allow_html=True)
 
         # ── Parties block ──
         parties = canonical.get("parties", {})
@@ -1858,29 +1875,34 @@ elif page == "Contract Viewer":
         if not any(bool(b) for b in all_blocks):
             st.markdown('<div style="color:var(--text-muted);padding:20px 0;font-size:13px">No structured fields extracted. Check the Raw JSON tab.</div>', unsafe_allow_html=True)
 
-        # ── Inline-edit regenerate bar ──────────────────────────────────
+        # ── Inline-edit regenerate bar ────────────────────────────────────
         edited_count = len(st.session_state.get("summary_edits", {}))
         if edited_count > 0:
+            st.markdown("<br>", unsafe_allow_html=True)
             st.markdown(f"""
             <div style="
-                margin-top:28px;
                 background:rgba(255,230,0,0.05);
                 border:1px solid rgba(255,230,0,0.22);
                 border-radius:10px;
-                padding:14px 20px 16px 20px;
+                padding:14px 20px;
+                display:flex;
+                align-items:center;
+                gap:10px;
             ">
-              <div style="
-                font-family:'Syne',sans-serif;font-size:13px;font-weight:700;
-                color:var(--gold);margin-bottom:8px;display:flex;align-items:center;gap:8px;
-              ">
-                <span>✎</span>
-                <span>{edited_count} field{'s' if edited_count != 1 else ''} edited in Summary</span>
-                <span style="font-size:11px;font-weight:400;color:var(--text-muted);margin-left:4px;">
-                  · Regenerate to apply these changes to your documents
-                </span>
+              <span style="font-size:16px;">✎</span>
+              <div>
+                <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--gold);">
+                  {edited_count} field{'s' if edited_count != 1 else ''} edited in Summary
+                </div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
+                  Click Regenerate below to apply these changes to your documents
+                </div>
               </div>
             </div>
             """, unsafe_allow_html=True)
+
+            # Spacing between banner and button
+            st.markdown('<div style="height:14px"></div>', unsafe_allow_html=True)
 
             col_regen, col_clear = st.columns([5, 1])
             with col_regen:
@@ -1888,9 +1910,14 @@ elif page == "Contract Viewer":
                     f"⚡ Regenerate Documents  ({edited_count} field{'s' if edited_count != 1 else ''} edited)",
                     type="primary",
                     use_container_width=True,
-                    key="regen_summary"
+                    key="regen_summary",
                 ):
-                    overrides = st.session_state.summary_edits
+                    # Build overrides dict — key is the human label (e.g. "Governing Law"),
+                    # value is the new text the user typed.
+                    overrides = {
+                        k.replace("summ__", "").replace("_", " ").title(): v
+                        for k, v in st.session_state.summary_edits.items()
+                    }
                     with st.spinner("Submitting edits and queuing regeneration…"):
                         try:
                             r2 = requests.post(
@@ -1899,13 +1926,15 @@ elif page == "Contract Viewer":
                                 json={"overrides": overrides},
                             )
                             if r2.status_code == 200:
-                                st.session_state.job_id = r2.json().get("job_id", job_id)
+                                new_job_id = r2.json().get("job_id", job_id)
+                                st.session_state.job_id = new_job_id
+                                # Clear edits so Summary refreshes clean on next load
                                 st.session_state.summary_edits   = {}
                                 st.session_state.summary_editing = set()
                                 st.session_state.page = "Job Status"
                                 st.rerun()
                             elif r2.status_code == 404:
-                                st.error("The /regenerate endpoint isn't deployed yet.")
+                                st.error("The /regenerate endpoint isn't deployed yet. Ask your backend dev to add it.")
                                 st.code(json.dumps({
                                     "endpoint": f"POST /jobs/{job_id}/regenerate",
                                     "body": {"overrides": overrides}
@@ -1915,7 +1944,7 @@ elif page == "Contract Viewer":
                         except Exception as e:
                             st.error(f"Connection failed: {e}")
             with col_clear:
-                if st.button("✕ Clear", key="clear_summary_edits", use_container_width=True):
+                if st.button("✕ Clear edits", key="clear_summ_edits", use_container_width=True):
                     st.session_state.summary_edits   = {}
                     st.session_state.summary_editing = set()
                     st.rerun()
