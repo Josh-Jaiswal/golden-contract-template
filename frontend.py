@@ -943,71 +943,6 @@ for i, p in enumerate(pages):
         st.session_state.page = p
 
 page = st.session_state.page
-
-# ── Nav button active-state styling ──────────────────────────────────────────
-# Streamlit renders each button inside a div whose data-testid = stButton,
-# wrapped in a div with a data-testid="element-container" that has a unique
-# key attribute. We can target via the button's own key using the aria-label
-# or via the surrounding column structure.
-# Most reliable: override global gold for ALL nav buttons to dark, then
-# re-apply gold ONLY to the active one using its specific key selector.
-_active_page = st.session_state.page
-
-# Build one CSS block: first reset ALL nav buttons to dark style,
-# then highlight only the active one.
-_nav_css_parts = []
-for _p in pages:
-    _safe_key = f"nav_{_p}"
-    if _p == _active_page:
-        # Active: gold fill
-        _nav_css_parts.append(f"""
-div[data-testid="stButton"]:has(button[key="{_safe_key}"]) > button,
-button[data-testid="baseButton-secondary"][key="{_safe_key}"] {{
-  background: var(--gold) !important;
-  color: #000 !important;
-  border: 1px solid var(--gold) !important;
-  font-weight: 700 !important;
-  box-shadow: 0 0 14px rgba(255,230,0,0.28) !important;
-  opacity: 1 !important;
-}}""")
-
-# The truly reliable approach in Streamlit: use nth-of-type on the columns
-# combined with overriding the global .stButton > button for nav area only.
-# We wrap nav in a container via surrounding columns and use nth-child.
-_active_idx = page_map.get(_active_page, 0)  # 0-based
-
-st.markdown(f"""
-<style>
-/* ── Step 1: Reset ALL buttons in the first 4 columns of the nav row to dark ── */
-/* We target them by their position in the stHorizontalBlock (the columns container) */
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"] > div[data-testid="stVerticalBlock"] > div[data-testid="element-container"] > div[data-testid="stButton"] > button {{
-  background: #1a1a1a !important;
-  color: #888 !important;
-  border: 1px solid #2e2e2e !important;
-  font-weight: 500 !important;
-  box-shadow: none !important;
-  opacity: 1 !important;
-}}
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"] > div[data-testid="stVerticalBlock"] > div[data-testid="element-container"] > div[data-testid="stButton"] > button:hover {{
-  background: #252525 !important;
-  color: #ccc !important;
-  border-color: #3a3a3a !important;
-}}
-
-/* ── Step 2: Re-apply gold to ONLY the active nav button via nth-child ── */
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child({_active_idx + 1}) > div[data-testid="stVerticalBlock"] > div[data-testid="element-container"] > div[data-testid="stButton"] > button {{
-  background: var(--gold) !important;
-  color: #000 !important;
-  border: 1px solid var(--gold) !important;
-  font-weight: 700 !important;
-  box-shadow: 0 0 14px rgba(255,230,0,0.28) !important;
-}}
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child({_active_idx + 1}) > div[data-testid="stVerticalBlock"] > div[data-testid="element-container"] > div[data-testid="stButton"] > button:hover {{
-  opacity: 0.88 !important;
-}}
-</style>
-""", unsafe_allow_html=True)
-
 st.markdown('<div style="padding: 32px 32px 0 32px;">', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
@@ -1543,74 +1478,61 @@ elif page == "Contract Viewer":
                 return v if any(val for val in v.values() if val not in (None, "", [], {})) else None
             return str(v) if v else None
 
-        # ── Session state for inline summary edits ──────────────────────
+        # ── Session state for summary inline edits ──────────────────────
         if "summary_edits" not in st.session_state:
-            st.session_state.summary_edits = {}      # {field_key: new_str_value}
+            st.session_state.summary_edits   = {}   # {canon_path: new_value}
         if "summary_editing" not in st.session_state:
-            st.session_state.summary_editing = set() # field_keys currently open
+            st.session_state.summary_editing = set() # paths open in edit mode
 
         st.markdown("""
         <style>
-        /* Pencil edit button next to each summary field */
-        div[data-testid="stButton"] > button[title^="Edit "] {
-          background: transparent !important;
-          border: 1px solid transparent !important;
-          color: #555 !important;
-          padding: 2px 7px !important;
-          font-size: 11px !important;
-          min-height: unset !important;
-          height: 26px !important;
-          box-shadow: none !important;
-          font-weight: 400 !important;
-          transition: all 0.15s !important;
+        [data-testid="stButton"] button[title^="Edit "] {
+          background:transparent!important;border:1px solid transparent!important;
+          color:#444!important;padding:1px 6px!important;font-size:11px!important;
+          height:24px!important;min-height:unset!important;box-shadow:none!important;
         }
-        div[data-testid="stButton"] > button[title^="Edit "]:hover {
-          background: rgba(255,230,0,0.12) !important;
-          border-color: rgba(255,230,0,0.3) !important;
-          color: var(--gold) !important;
+        [data-testid="stButton"] button[title^="Edit "]:hover {
+          background:rgba(255,230,0,0.1)!important;
+          border-color:rgba(255,230,0,0.3)!important;color:var(--gold)!important;
         }
-        /* Save / Cancel inline buttons */
-        div[data-testid="stButton"] > button[title="Save"],
-        div[data-testid="stButton"] > button[title="Cancel"] {
-          background: transparent !important;
-          border: 1px solid #333 !important;
-          color: #aaa !important;
-          padding: 2px 8px !important;
-          font-size: 12px !important;
-          min-height: unset !important;
-          height: 28px !important;
-          box-shadow: none !important;
-          font-weight: 500 !important;
+        [data-testid="stButton"] button[title="Save"],
+        [data-testid="stButton"] button[title="Cancel"] {
+          background:transparent!important;border:1px solid #333!important;
+          color:#999!important;padding:2px 8px!important;height:28px!important;
+          min-height:unset!important;box-shadow:none!important;font-size:12px!important;
         }
-        div[data-testid="stButton"] > button[title="Save"]:hover {
-          background: rgba(0,232,122,0.12) !important;
-          border-color: var(--green) !important;
-          color: var(--green) !important;
+        [data-testid="stButton"] button[title="Save"]:hover {
+          border-color:var(--green)!important;color:var(--green)!important;
+          background:rgba(0,232,122,0.08)!important;
         }
-        div[data-testid="stButton"] > button[title="Cancel"]:hover {
-          background: rgba(255,77,77,0.1) !important;
-          border-color: var(--red) !important;
-          color: var(--red) !important;
+        [data-testid="stButton"] button[title="Cancel"]:hover {
+          border-color:var(--red)!important;color:var(--red)!important;
+          background:rgba(255,77,77,0.08)!important;
         }
         </style>
         """, unsafe_allow_html=True)
 
-        def _fk(key):
-            return "summ__" + key.lower().replace(" ", "_").replace("/", "_")
+        def fmt_val(v):
+            if v is None: return None
+            if isinstance(v, str): s = v.strip(); return s if s else None
+            if isinstance(v, list):
+                items = [str(i).strip() for i in v if str(i).strip()]
+                return items if items else None
+            if isinstance(v, dict):
+                return v if any(val for val in v.values() if val not in (None, "", [], {})) else None
+            return str(v) if v else None
 
-        def render_summary_row(key, val, icon=""):
-            """Render one clean summary row with inline pencil-edit support."""
+        def render_summary_row(key, val, icon="", canon_path=""):
+            """Render a summary row with inline pencil edit.
+            canon_path: dot-path into canonical JSON e.g. 'legal.governingLaw'
+            """
             if val is None:
                 return
-
-            fk         = _fk(key)
+            fk = canon_path if canon_path else key.lower().replace(" ", "_")
             is_editing = fk in st.session_state.summary_editing
             is_edited  = fk in st.session_state.summary_edits
+            display_val = st.session_state.summary_edits[fk] if is_edited else val
 
-            # If edited, display the overridden value instead
-            display_val = st.session_state.summary_edits.get(fk, val)
-
-            # Flatten to string for the text area
             if isinstance(display_val, list):
                 flat = "\n".join(str(i) for i in display_val)
             elif isinstance(display_val, dict):
@@ -1618,21 +1540,19 @@ elif page == "Contract Viewer":
             else:
                 flat = str(display_val) if display_val is not None else ""
 
-            if not is_editing:
-                # ── Read mode: render value + small pencil icon ──
-                edited_pill = (
-                    '<span style="display:inline-flex;align-items:center;gap:3px;'
-                    'font-size:10px;font-family:\'DM Mono\',monospace;color:var(--gold);'
-                    'background:rgba(255,230,0,0.1);border:1px solid rgba(255,230,0,0.25);'
-                    'border-radius:4px;padding:1px 6px;margin-left:8px;">✎ edited</span>'
-                ) if is_edited else ""
+            edited_pill = (
+                ' <span style="display:inline-flex;align-items:center;gap:3px;'
+                'font-size:10px;font-family:\'DM Mono\',monospace;color:var(--gold);'
+                'background:rgba(255,230,0,0.1);border:1px solid rgba(255,230,0,0.2);'
+                'border-radius:4px;padding:1px 5px;">✎ edited</span>'
+            ) if is_edited else ""
 
+            if not is_editing:
                 if isinstance(display_val, list) and not is_edited:
                     bullets = "".join(
                         f'<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:5px;">'
                         f'<div style="color:var(--gold);margin-top:2px;font-size:10px;">▸</div>'
-                        f'<div style="font-size:13px;color:var(--text);line-height:1.5;">{item}</div>'
-                        f'</div>'
+                        f'<div style="font-size:13px;color:var(--text);line-height:1.5;">{item}</div></div>'
                         for item in display_val
                     )
                     val_html = f'<div style="flex:1;padding-top:2px;">{bullets}</div>'
@@ -1641,64 +1561,54 @@ elif page == "Contract Viewer":
                         f'<div style="display:flex;gap:8px;align-items:baseline;margin-bottom:6px;">'
                         f'<div style="font-size:10px;font-family:\'DM Mono\',monospace;color:var(--text-muted);'
                         f'text-transform:uppercase;letter-spacing:0.4px;min-width:120px;">{k}</div>'
-                        f'<div style="font-size:13px;color:var(--text);">{str(dv)}</div>'
-                        f'</div>'
-                        for k, dv in display_val.items()
-                        if dv not in (None, "", [], {})
+                        f'<div style="font-size:13px;color:var(--text);">{str(dv)}</div></div>'
+                        for k, dv in display_val.items() if dv not in (None, "", [], {})
                     )
-                    if not pairs:
-                        return
+                    if not pairs: return
                     val_html = f'<div style="flex:1;padding-top:2px;">{pairs}</div>'
                 else:
-                    val_color = "var(--gold)" if is_edited else "var(--text)"
-                    val_html = f'<div class="summary-val" style="color:{val_color};">{flat}{edited_pill}</div>'
+                    color = "var(--gold)" if is_edited else "var(--text)"
+                    val_html = f'<div class="summary-val" style="color:{color};">{flat}{edited_pill}</div>'
 
                 col_val, col_btn = st.columns([22, 1])
                 with col_val:
                     st.markdown(
                         f'<div class="summary-row" style="align-items:flex-start;">'
-                        f'<div class="summary-key">{icon} {key}</div>'
-                        f'{val_html}'
-                        f'</div>',
+                        f'<div class="summary-key">{icon} {key}</div>{val_html}</div>',
                         unsafe_allow_html=True
                     )
                 with col_btn:
                     st.markdown('<div style="padding-top:10px">', unsafe_allow_html=True)
-                    if st.button("✎", key=f"editbtn_{fk}", help=f"Edit {key}"):
+                    if st.button("✎", key=f"eb_{fk}", help=f"Edit {key}"):
                         st.session_state.summary_editing.add(fk)
                         st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
             else:
-                # ── Edit mode ──
                 st.markdown(
-                    f'<div style="padding:4px 0 2px 0;font-family:\'DM Mono\',monospace;font-size:11px;'
-                    f'color:var(--gold);text-transform:uppercase;letter-spacing:0.6px;">'
-                    f'{icon} {key}</div>',
-                    unsafe_allow_html=True
+                    f'<div style="padding:6px 0 2px 0;font-family:\'DM Mono\',monospace;'
+                    f'font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:0.6px;">'
+                    f'{icon} {key}</div>', unsafe_allow_html=True
                 )
-                col_inp, col_save, col_cancel = st.columns([16, 1.2, 1.2])
+                col_inp, col_save, col_cancel = st.columns([16, 1.3, 1.3])
                 with col_inp:
-                    new_val = st.text_area(
-                        f"edit_{key}",
-                        value=flat,
-                        key=f"editinput_{fk}",
-                        label_visibility="collapsed",
-                        height=72,
-                    )
+                    new_text = st.text_area(f"edit_{fk}", value=flat, key=f"ei_{fk}",
+                                            label_visibility="collapsed", height=72)
                 with col_save:
                     st.markdown('<div style="padding-top:6px">', unsafe_allow_html=True)
-                    if st.button("✓", key=f"save_{fk}", help="Save"):
-                        st.session_state.summary_edits[fk] = new_val
+                    if st.button("✓", key=f"sv_{fk}", help="Save"):
+                        st.session_state.summary_edits[fk] = new_text
+                        if canon_path:
+                            _patch_canonical(canon_path, new_text)
                         st.session_state.summary_editing.discard(fk)
                         st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
                 with col_cancel:
                     st.markdown('<div style="padding-top:6px">', unsafe_allow_html=True)
-                    if st.button("✕", key=f"cancel_{fk}", help="Cancel"):
+                    if st.button("✕", key=f"cx_{fk}", help="Cancel"):
                         st.session_state.summary_editing.discard(fk)
                         st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
-                st.markdown('<div style="border-bottom:1px solid var(--border);margin-bottom:4px"></div>', unsafe_allow_html=True)
+                st.markdown('<div style="border-bottom:1px solid var(--border);margin:4px 0 6px 0"></div>', unsafe_allow_html=True)
 
         # ── Parties block ──
         parties = canonical.get("parties", {})
@@ -1748,14 +1658,10 @@ elif page == "Contract Viewer":
                  color:var(--text-muted);letter-spacing:1.2px;text-transform:uppercase;
                  margin-bottom:10px;">Dates</div>""", unsafe_allow_html=True)
             st.markdown('<div class="card" style="margin-bottom:16px;">', unsafe_allow_html=True)
-            cols = st.columns(len(date_fields), gap="small")
-            for col, (label, val) in zip(cols, date_fields.items()):
-                with col:
-                    st.markdown(f"""
-                    <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text-muted);
-                         text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">{label}</div>
-                    <div style="font-size:14px;font-weight:600;color:var(--text);">{val}</div>
-                    """, unsafe_allow_html=True)
+            date_paths = {"Effective Date":"dates.effectiveDate","Expiry Date":"dates.expiryDate",
+                "Execution Date":"dates.executionDate","Review Date":"dates.reviewDate"}
+            for label, val in date_fields.items():
+                render_summary_row(label, fmt_val(val), canon_path=date_paths.get(label,""))
             st.markdown("</div>", unsafe_allow_html=True)
 
         # ── Legal block ──
@@ -1773,8 +1679,11 @@ elif page == "Contract Viewer":
                  color:var(--text-muted);letter-spacing:1.2px;text-transform:uppercase;
                  margin-bottom:10px;">Legal</div>""", unsafe_allow_html=True)
             st.markdown('<div class="card" style="margin-bottom:16px;">', unsafe_allow_html=True)
+            legal_paths = {"Governing Law":"legal.governingLaw","Jurisdiction":"legal.jurisdiction",
+                "Liability Cap":"legal.liabilityCap","IP Ownership":"legal.ipOwnership",
+                "Dispute Resolution":"legal.disputeResolution"}
             for label, val in legal_fields.items():
-                render_summary_row(label, fmt_val(val))
+                render_summary_row(label, fmt_val(val), canon_path=legal_paths.get(label,""))
             st.markdown("</div>", unsafe_allow_html=True)
 
         # ── Confidentiality block ──
@@ -1788,11 +1697,11 @@ elif page == "Contract Viewer":
                  margin-bottom:10px;">Confidentiality</div>""", unsafe_allow_html=True)
             st.markdown('<div class="card" style="margin-bottom:16px;">', unsafe_allow_html=True)
             if conf_term:
-                render_summary_row("Term", fmt_val(conf_term))
+                render_summary_row("Term", fmt_val(conf_term), canon_path="confidentiality.term")
             if conf_obligations:
-                render_summary_row("Obligations", fmt_val(conf_obligations))
+                render_summary_row("Obligations", fmt_val(conf_obligations), canon_path="confidentiality.obligations")
             if conf_exceptions:
-                render_summary_row("Exceptions", fmt_val(conf_exceptions))
+                render_summary_row("Exceptions", fmt_val(conf_exceptions), canon_path="confidentiality.exceptions")
             st.markdown("</div>", unsafe_allow_html=True)
 
         # ── Scope of Work block ──
@@ -1807,13 +1716,13 @@ elif page == "Contract Viewer":
                  margin-bottom:10px;">Scope of Work</div>""", unsafe_allow_html=True)
             st.markdown('<div class="card" style="margin-bottom:16px;">', unsafe_allow_html=True)
             if scope_desc:
-                render_summary_row("Description", fmt_val(scope_desc))
+                render_summary_row("Description", fmt_val(scope_desc), canon_path="scope.description")
             if scope_deliv:
-                render_summary_row("Deliverables", fmt_val(scope_deliv) if isinstance(scope_deliv, list) else fmt_val(scope_deliv))
+                render_summary_row("Deliverables", fmt_val(scope_deliv), canon_path="scope.deliverables")
             if scope_out:
-                render_summary_row("Out of Scope", fmt_val(scope_out) if isinstance(scope_out, list) else fmt_val(scope_out))
+                render_summary_row("Out of Scope", fmt_val(scope_out), canon_path="scope.outOfScope")
             if scope_miles:
-                render_summary_row("Milestones", fmt_val(scope_miles) if isinstance(scope_miles, list) else fmt_val(scope_miles))
+                render_summary_row("Milestones", fmt_val(scope_miles), canon_path="scope.milestones")
             st.markdown("</div>", unsafe_allow_html=True)
 
         # ── Commercials block ──
@@ -1831,8 +1740,11 @@ elif page == "Contract Viewer":
                  color:var(--text-muted);letter-spacing:1.2px;text-transform:uppercase;
                  margin-bottom:10px;">Commercials</div>""", unsafe_allow_html=True)
             st.markdown('<div class="card" style="margin-bottom:16px;">', unsafe_allow_html=True)
+            comm_paths = {"Total Value":"commercials.totalValue","Currency":"commercials.currency",
+                "Payment Terms":"commercials.paymentTerms","Pricing Model":"commercials.pricingModel",
+                "Taxes":"commercials.taxes"}
             for label, val in comm_fields.items():
-                render_summary_row(label, fmt_val(val))
+                render_summary_row(label, fmt_val(val), canon_path=comm_paths.get(label,""))
             st.markdown("</div>", unsafe_allow_html=True)
 
         # ── Security block ──
@@ -1849,8 +1761,10 @@ elif page == "Contract Viewer":
                  color:var(--text-muted);letter-spacing:1.2px;text-transform:uppercase;
                  margin-bottom:10px;">Security & Privacy</div>""", unsafe_allow_html=True)
             st.markdown('<div class="card" style="margin-bottom:16px;">', unsafe_allow_html=True)
+            sec_paths = {"Data Residency":"security.dataResidency","Compliance Standard":"security.complianceStandard",
+                "Personal Data Processing":"security.personalDataProcessing","Privacy Requirements":"security.privacyRequirements"}
             for label, val in sec_fields.items():
-                render_summary_row(label, fmt_val(val))
+                render_summary_row(label, fmt_val(val), canon_path=sec_paths.get(label,""))
             st.markdown("</div>", unsafe_allow_html=True)
 
         # ── Project Governance block ──
@@ -1866,8 +1780,11 @@ elif page == "Contract Viewer":
                  color:var(--text-muted);letter-spacing:1.2px;text-transform:uppercase;
                  margin-bottom:10px;">Project Governance</div>""", unsafe_allow_html=True)
             st.markdown('<div class="card" style="margin-bottom:16px;">', unsafe_allow_html=True)
+            pg_paths = {"Project Timeline":"projectGovernance.projectTimeline",
+                "Kickoff Date":"projectGovernance.kickoffDate",
+                "Review Milestones":"projectGovernance.reviewMilestones"}
             for label, val in pg_fields.items():
-                render_summary_row(label, fmt_val(val))
+                render_summary_row(label, fmt_val(val), canon_path=pg_paths.get(label,""))
             st.markdown("</div>", unsafe_allow_html=True)
 
         # Fallback if nothing rendered
@@ -1875,49 +1792,30 @@ elif page == "Contract Viewer":
         if not any(bool(b) for b in all_blocks):
             st.markdown('<div style="color:var(--text-muted);padding:20px 0;font-size:13px">No structured fields extracted. Check the Raw JSON tab.</div>', unsafe_allow_html=True)
 
-        # ── Inline-edit regenerate bar ────────────────────────────────────
+        # ── Regenerate bar ───────────────────────────────────────────────
         edited_count = len(st.session_state.get("summary_edits", {}))
         if edited_count > 0:
             st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown(f"""
-            <div style="
-                background:rgba(255,230,0,0.05);
-                border:1px solid rgba(255,230,0,0.22);
-                border-radius:10px;
-                padding:14px 20px;
-                display:flex;
-                align-items:center;
-                gap:10px;
-            ">
-              <span style="font-size:16px;">✎</span>
-              <div>
-                <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--gold);">
-                  {edited_count} field{'s' if edited_count != 1 else ''} edited in Summary
-                </div>
-                <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
-                  Click Regenerate below to apply these changes to your documents
-                </div>
-              </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            # Spacing between banner and button
-            st.markdown('<div style="height:14px"></div>', unsafe_allow_html=True)
-
+            label_s = "s" if edited_count != 1 else ""
+            regen_html = (
+                "<div style='background:rgba(255,230,0,0.05);border:1px solid rgba(255,230,0,0.22);"
+                "border-radius:10px;padding:14px 20px;display:flex;align-items:center;gap:12px;'>"
+                "<span style='font-size:18px;'>✎</span>"
+                "<div>"
+                "<div style='font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:#FFE600;'>"
+                f"{edited_count} field{label_s} edited"
+                "</div>"
+                "<div style='font-size:11px;color:#666;margin-top:2px;'>"
+                "Updated values shown in gold above &middot; Regenerate to apply to your documents"
+                "</div></div></div>"
+            )
+            st.markdown(regen_html, unsafe_allow_html=True)
+            st.markdown('<div style="height:12px"></div>', unsafe_allow_html=True)
             col_regen, col_clear = st.columns([5, 1])
             with col_regen:
-                if st.button(
-                    f"⚡ Regenerate Documents  ({edited_count} field{'s' if edited_count != 1 else ''} edited)",
-                    type="primary",
-                    use_container_width=True,
-                    key="regen_summary",
-                ):
-                    # Build overrides dict — key is the human label (e.g. "Governing Law"),
-                    # value is the new text the user typed.
-                    overrides = {
-                        k.replace("summ__", "").replace("_", " ").title(): v
-                        for k, v in st.session_state.summary_edits.items()
-                    }
+                btn_label = f"⚡ Regenerate Documents  ({edited_count} field{label_s} edited)"
+                if st.button(btn_label, type="primary", use_container_width=True, key="regen_summary"):
+                    overrides = dict(st.session_state.summary_edits)
                     with st.spinner("Submitting edits and queuing regeneration…"):
                         try:
                             r2 = requests.post(
@@ -1926,29 +1824,25 @@ elif page == "Contract Viewer":
                                 json={"overrides": overrides},
                             )
                             if r2.status_code == 200:
-                                new_job_id = r2.json().get("job_id", job_id)
-                                st.session_state.job_id = new_job_id
-                                # Clear edits so Summary refreshes clean on next load
+                                if _ckey in st.session_state:
+                                    del st.session_state[_ckey]
                                 st.session_state.summary_edits   = {}
                                 st.session_state.summary_editing = set()
                                 st.session_state.page = "Job Status"
                                 st.rerun()
                             elif r2.status_code == 404:
-                                st.error("The /regenerate endpoint isn't deployed yet. Ask your backend dev to add it.")
-                                st.code(json.dumps({
-                                    "endpoint": f"POST /jobs/{job_id}/regenerate",
-                                    "body": {"overrides": overrides}
-                                }, indent=2), language="json")
+                                st.error("The /regenerate endpoint is not deployed yet.")
                             else:
                                 st.error(f"API error {r2.status_code}: {r2.text}")
                         except Exception as e:
                             st.error(f"Connection failed: {e}")
             with col_clear:
-                if st.button("✕ Clear edits", key="clear_summ_edits", use_container_width=True):
+                if st.button("✕ Clear", key="clear_summ", use_container_width=True):
                     st.session_state.summary_edits   = {}
                     st.session_state.summary_editing = set()
+                    if _ckey in st.session_state:
+                        del st.session_state[_ckey]
                     st.rerun()
-
     # ── TAB: CONFLICTS ────────────────────────
     with tabs[1]:
         st.markdown("<br>", unsafe_allow_html=True)
