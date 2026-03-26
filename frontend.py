@@ -495,27 +495,43 @@ button[kind="primary"],
 }
 .stButton > button:hover { opacity: 0.88 !important; }
 
-/* ── TABS: larger font + active gold indicator ── */
+/* ── TABS: Bigger, Bolder, Premium Style ── */
+
 .stTabs [data-baseweb="tab-list"] {
   background: transparent !important;
-  gap: 4px;
+  gap: 8px;
   border-bottom: 1px solid var(--border) !important;
+  padding-bottom: 6px;
 }
+
+/* INACTIVE TAB */
 .stTabs [data-baseweb="tab"] {
   background: transparent !important;
   color: var(--text-muted) !important;
+
   font-family: 'DM Sans', sans-serif !important;
-  font-size: 14px !important;
-  font-weight: 500 !important;
-  border-radius: 0 !important;
-  padding: 10px 18px !important;
-  border-bottom: 2px solid transparent !important;
-  letter-spacing: 0.1px !important;
+  font-size: 18px !important;      /*  Bigger text */
+  font-weight: 700 !important;     /*  Bolder */
+  letter-spacing: 0.3px !important;
+
+  padding: 14px 26px !important;   /*  Taller + wider */
+  line-height: 22px !important;
+
+  border-radius: 6px 6px 0 0 !important;
+  border-bottom: 3px solid transparent !important;
+
+  transition: all 0.15s ease !important;
 }
+
+/* ACTIVE TAB */
 .stTabs [aria-selected="true"] {
   color: var(--gold) !important;
-  border-bottom: 2px solid var(--gold) !important;
-  background: rgba(255,230,0,0.04) !important;
+  background: rgba(255,230,0,0.08) !important;
+
+  border-bottom: 3px solid var(--gold) !important;
+
+  font-size: 19px !important;      /*  Slightly larger when active */
+  font-weight: 800 !important;     /*  Stronger emphasis */
 }
 
 .stProgress > div > div { background: var(--gold) !important; border-radius: 4px; }
@@ -638,6 +654,256 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+st.markdown("""
+<style>
+.mf-card {
+    background: #1b1b20;
+    border: 1px solid #2b2b33;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: 0.15s ease;
+}
+.mf-card:hover {
+    border-color: #3f3f55;
+    background: #212128;
+}
+
+.mf-icon {
+    font-size: 15px;
+    color: #ffcd4d;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.mf-field {
+    font-size: 14px;
+    color: var(--text);
+    font-weight: 500;
+}
+
+.mf-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    padding-left: 2px;
+}
+
+.mf-badge {
+    background: #2a2a33;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: #cfcfd9;
+    margin-left: 8px;
+}
+
+.mf-header {
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.mf-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+@media (min-width: 900px) {
+    .mf-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+/* --- COLLAPSIBLE SECTION SYSTEM --- */
+.mf-section {
+    border: 1px solid #2c2c33;
+    background: #1a1a1f;
+    border-radius: 8px;
+    margin-bottom: 14px;
+}
+
+.mf-toggle {
+    display: none;
+}
+
+.mf-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.mf-label:hover {
+    background: #222229;
+}
+
+.mf-chevron {
+    transition: transform 0.2s ease;
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+.mf-toggle:checked + .mf-label .mf-chevron {
+    transform: rotate(90deg);
+}
+
+.mf-content {
+    display: none;
+    padding: 0 16px 16px 16px;
+}
+
+.mf-toggle:checked ~ .mf-content {
+    display: block;
+}
+
+/* --- BADGE --- */
+.mf-badge {
+    background: #2f2f48;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    color: #e3e3f5;
+    margin-left: 10px;
+}
+
+/* --- FIELD CARDS --- */
+.mf-card {
+    background: #202026;
+    border: 1px solid #33333d;
+    padding: 12px 14px;
+    border-radius: 6px;
+    margin-top: 10px;
+}
+
+.mf-icon {
+    color: #ffcf4d;
+    font-size: 15px;
+}
+
+.mf-field {
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 6px;
+}
+
+.mf-hint {
+    font-size: 12px;
+    color: #9b9ba5;
+    margin-top: 2px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+
+.mf-section {
+    border: 1px solid #2c2c33;
+    background: #1a1a1f;
+    border-radius: 8px;
+    margin-bottom: 14px;
+}
+
+/* Collapsible logic */
+.mf-toggle { display: none; }
+
+.mf-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.mf-label:hover { background: #222229; }
+
+.mf-chevron {
+    transition: transform 0.2s ease;
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+.mf-toggle:checked + .mf-label .mf-chevron {
+    transform: rotate(90deg);
+}
+
+.mf-content {
+    display: none;
+    padding: 0 16px 16px 16px;
+}
+
+.mf-toggle:checked ~ .mf-content {
+    display: block;
+}
+
+
+/*** --- Card Style --- ***/
+
+.mf-card {
+    background: #202026;
+    border: 1px solid #33333d;
+    padding: 12px 14px;
+    border-radius: 6px;
+    margin-top: 10px;
+    transition: 0.15s ease;
+}
+
+.mf-card:hover {
+    background: #27272f;
+    border-color: #3f3f55;
+}
+
+.mf-icon {
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.mf-field {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+}
+
+.mf-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.mf-badge {
+    background: #2f2f48;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    color: #e3e3f5;
+    margin-left: 10px;
+}
+
+/*** JSON Highlighting ***/
+.highlight-json {
+    background: #444450 !important;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+</style>
+""", unsafe_allow_html=True)
 # ─────────────────────────────────────────────
 # HEADER
 # ─────────────────────────────────────────────
@@ -759,16 +1025,20 @@ def api_get_bytes(path):
     except:
         return None
 
-# ── Missing fields tree builder ──
+# ─────────────────────────────────────────────
+# GROUP + RENDER MISSING FIELDS USING EXPANDERS
+# ─────────────────────────────────────────────
+
 SECTION_META = {
     "parties":        {"icon": "👥", "label": "Parties"},
     "dates":          {"icon": "📅", "label": "Dates"},
     "scope":          {"icon": "📐", "label": "Scope of Work"},
     "confidentiality":{"icon": "🔒", "label": "Confidentiality"},
     "commercials":    {"icon": "💰", "label": "Commercials"},
-    "legal":          {"icon": "⚖️",  "label": "Legal"},
+    "legal":          {"icon": "⚖️", "label": "Legal"},
     "payment":        {"icon": "💳", "label": "Payment"},
     "termination":    {"icon": "🚫", "label": "Termination"},
+    "projectgovernance": {"icon": "📊", "label": "Project Governance"},
     "other":          {"icon": "📋", "label": "Other"},
 }
 
@@ -777,56 +1047,52 @@ def group_missing_fields(missing_list):
     for f in missing_list:
         if isinstance(f, dict):
             label = f.get("field") or f.get("name", str(f))
-            hint  = f.get("hint") or f.get("description", "Required for compliance")
+            hint = f.get("hint") or f.get("description", "Required for compliance")
         else:
             label = str(f)
-            hint  = "Required for compliance"
-        # Derive section from dot-notation prefix
+            hint = "Required for compliance"
+
         parts = label.split(".")
         section_key = parts[0].lower() if len(parts) > 1 else "other"
         subfield = ".".join(parts[1:]) if len(parts) > 1 else label
+
         if section_key not in sections:
             sections[section_key] = []
-        sections[section_key].append({"label": subfield, "full": label, "hint": hint})
+
+        sections[section_key].append({
+            "label": subfield,
+            "full": label,
+            "hint": hint
+        })
     return sections
 
 def render_missing_fields_tree(missing_list):
     sections = group_missing_fields(missing_list)
+
     for sec_key, items in sections.items():
         meta = SECTION_META.get(sec_key, {"icon": "📋", "label": sec_key.capitalize()})
-        section_id = f"mf_sec_{sec_key}"
-        items_html = ""
-        for item in items:
-            items_html += f"""
-            <div class="mf-item">
-              <div class="mf-item-icon">⚠</div>
-              <div class="mf-item-name">{item['label']}</div>
-              <div class="mf-item-hint">{item['hint']}</div>
-            </div>
-            """
-        st.markdown(f"""
-        <div class="mf-section">
-          <div class="mf-section-header" onclick="
-            var el = document.getElementById('{section_id}');
-            var ch = this.querySelector('.mf-chevron');
-            if(el.style.display === 'none'){{
-              el.style.display='block';
-              ch.style.transform='rotate(90deg)';
-            }} else {{
-              el.style.display='none';
-              ch.style.transform='rotate(0deg)';
-            }}
-          ">
-            <span class="mf-chevron" style="transform:rotate(90deg)">▶</span>
-            <span class="mf-section-icon">{meta['icon']}</span>
-            <span class="mf-section-name">{meta['label']}</span>
-            <span class="mf-section-count">{len(items)} missing</span>
-          </div>
-          <div class="mf-items" id="{section_id}">
-            {items_html}
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
+
+        header = f"{meta['icon']} {meta['label']} · {len(items)} missing"
+
+        with st.expander(header, expanded=False):
+            for item in items:
+                st.markdown(f"""
+                <div style="
+                    background:#1c1c22;
+                    border:1px solid #2d2d35;
+                    border-radius:8px;
+                    padding:12px 14px;
+                    margin-bottom:10px;
+                ">
+                    <div style="color:#ffcf4c;font-size:18px;margin-bottom:4px;">⚠</div>
+                    <div style="font-size:14px;font-weight:600;color:var(--text);">
+                        {item['label']}
+                    </div>
+                    <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+                        {item['hint']}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
 # PAGE: UPLOAD
@@ -848,11 +1114,12 @@ if page == "Upload & Analyze":
         )
         contract_type = st.selectbox(
             "Contract Type",
-            ["auto", "nda", "sow"],
+            ["auto", "nda", "sow", "both"],
             format_func=lambda x: {
                 "auto": "🔍 Auto-detect",
                 "nda":  "📋 NDA — Non-Disclosure Agreement",
-                "sow":  "📄 SOW — Statement of Work"
+                "sow":  "📄 SOW — Statement of Work",
+                "both": "📑 Both — Generate NDA + SOW"
             }[x]
         )
         st.markdown("</div>", unsafe_allow_html=True)
@@ -956,30 +1223,129 @@ elif page == "Job Status":
         if s == "complete":
             progress_ph.progress(100)
             urls = job.get("download_urls", {})
+            ct   = job.get("contract_type", "auto").lower()
+            nda  = api_get_bytes(urls.get("nda_pdf", "")) if urls.get("nda_pdf") else None
+            sow  = api_get_bytes(urls.get("sow_pdf", "")) if urls.get("sow_pdf") else None
+
             with content_ph.container():
                 st.markdown("---")
                 st.markdown('<div style="font-family:\'Syne\',sans-serif;font-size:16px;font-weight:600;margin-bottom:16px">Generated Documents</div>', unsafe_allow_html=True)
-                c1, c2 = st.columns(2, gap="medium")
-                with c1:
-                    st.markdown('<div class="card">', unsafe_allow_html=True)
-                    st.markdown('<div style="font-size:11px;font-family:\'DM Mono\',monospace;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">Non-Disclosure Agreement</div>', unsafe_allow_html=True)
-                    nda = api_get_bytes(urls.get("nda_pdf", ""))
-                    if nda:
+
+                # ── Detection / generation result banner ──────────────────
+                if ct == "auto":
+                    if nda and sow:
+                        detected_label = "Auto-detected: NDA + SOW — both documents generated"
+                        detected_icon  = "🔍"
+                        banner_color   = "#FFE600"
+                        glow_color     = "rgba(255,230,0,0.18)"
+                        border_color   = "rgba(255,230,0,0.35)"
+                    elif nda:
+                        detected_label = "Auto-detected: Non-Disclosure Agreement"
+                        detected_icon  = "🔍"
+                        banner_color   = "#FFE600"
+                        glow_color     = "rgba(255,230,0,0.18)"
+                        border_color   = "rgba(255,230,0,0.35)"
+                    elif sow:
+                        detected_label = "Auto-detected: Statement of Work"
+                        detected_icon  = "🔍"
+                        banner_color   = "#FFE600"
+                        glow_color     = "rgba(255,230,0,0.18)"
+                        border_color   = "rgba(255,230,0,0.35)"
+                    else:
+                        detected_label = "Auto-detect complete — no documents generated"
+                        detected_icon  = "⚠"
+                        banner_color   = "#ffb300"
+                        glow_color     = "rgba(255,179,0,0.15)"
+                        border_color   = "rgba(255,179,0,0.3)"
+                elif ct == "nda":
+                    detected_label = "Generated: Non-Disclosure Agreement"
+                    detected_icon  = "📋"
+                    banner_color   = "#4d9fff"
+                    glow_color     = "rgba(77,159,255,0.15)"
+                    border_color   = "rgba(77,159,255,0.3)"
+                elif ct == "sow":
+                    detected_label = "Generated: Statement of Work"
+                    detected_icon  = "📄"
+                    banner_color   = "#00e87a"
+                    glow_color     = "rgba(0,232,122,0.15)"
+                    border_color   = "rgba(0,232,122,0.3)"
+                else:  # both
+                    detected_label = "Generated: NDA + SOW"
+                    detected_icon  = "📑"
+                    banner_color   = "#FFE600"
+                    glow_color     = "rgba(255,230,0,0.18)"
+                    border_color   = "rgba(255,230,0,0.35)"
+
+                st.markdown(f"""
+                <div style="
+                    background: {glow_color};
+                    border: 1px solid {border_color};
+                    border-radius: 10px;
+                    padding: 14px 20px;
+                    margin-bottom: 20px;
+                    display: flex;
+                    align-items: center;
+                    gap: 14px;
+                    box-shadow: 0 0 24px {glow_color}, 0 0 6px {glow_color};
+                    position: relative;
+                    overflow: hidden;
+                ">
+                  <div style="
+                    font-size: 22px;
+                    filter: drop-shadow(0 0 6px {banner_color});
+                  ">{detected_icon}</div>
+                  <div>
+                    <div style="
+                      font-family: 'Syne', sans-serif;
+                      font-size: 13px;
+                      font-weight: 700;
+                      color: {banner_color};
+                      letter-spacing: 0.3px;
+                      text-shadow: 0 0 12px {banner_color};
+                    ">{detected_label}</div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px; font-family: 'DM Mono', monospace;">
+                      Contract type · {ct.upper()}
+                    </div>
+                  </div>
+                  <div style="
+                    position: absolute;
+                    right: 0; top: 0; bottom: 0;
+                    width: 120px;
+                    background: linear-gradient(to left, {glow_color}, transparent);
+                  "></div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # ── Render only the doc(s) that were actually generated ───
+                if nda and sow:
+                    c1, c2 = st.columns(2, gap="medium")
+                    with c1:
+                        st.markdown('<div class="card">', unsafe_allow_html=True)
+                        st.markdown('<div style="font-size:11px;font-family:\'DM Mono\',monospace;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">Non-Disclosure Agreement</div>', unsafe_allow_html=True)
                         preview_pdf(nda)
                         st.download_button("⬇ Download NDA", nda, file_name="NDA.pdf", mime="application/pdf")
-                    else:
-                        st.warning("NDA document unavailable")
-                    st.markdown("</div>", unsafe_allow_html=True)
-                with c2:
-                    st.markdown('<div class="card">', unsafe_allow_html=True)
-                    st.markdown('<div style="font-size:11px;font-family:\'DM Mono\',monospace;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">Statement of Work</div>', unsafe_allow_html=True)
-                    sow = api_get_bytes(urls.get("sow_pdf", ""))
-                    if sow:
+                        st.markdown("</div>", unsafe_allow_html=True)
+                    with c2:
+                        st.markdown('<div class="card">', unsafe_allow_html=True)
+                        st.markdown('<div style="font-size:11px;font-family:\'DM Mono\',monospace;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">Statement of Work</div>', unsafe_allow_html=True)
                         preview_pdf(sow)
                         st.download_button("⬇ Download SOW", sow, file_name="SOW.pdf", mime="application/pdf")
-                    else:
-                        st.warning("SOW document unavailable")
+                        st.markdown("</div>", unsafe_allow_html=True)
+                elif nda:
+                    st.markdown('<div class="card">', unsafe_allow_html=True)
+                    st.markdown('<div style="font-size:11px;font-family:\'DM Mono\',monospace;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">Non-Disclosure Agreement</div>', unsafe_allow_html=True)
+                    preview_pdf(nda)
+                    st.download_button("⬇ Download NDA", nda, file_name="NDA.pdf", mime="application/pdf")
                     st.markdown("</div>", unsafe_allow_html=True)
+                elif sow:
+                    st.markdown('<div class="card">', unsafe_allow_html=True)
+                    st.markdown('<div style="font-size:11px;font-family:\'DM Mono\',monospace;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">Statement of Work</div>', unsafe_allow_html=True)
+                    preview_pdf(sow)
+                    st.download_button("⬇ Download SOW", sow, file_name="SOW.pdf", mime="application/pdf")
+                    st.markdown("</div>", unsafe_allow_html=True)
+                else:
+                    st.warning("No documents were generated for this job.")
+
                 st.markdown(
                     f'<div class="card" style="margin-top:8px"><span style="font-size:12px;color:var(--text-muted)">Submitted</span>'
                     f'<span style="font-size:13px;color:var(--text);margin-left:16px">{format_time(job.get("created_at"))}</span></div>',
@@ -1065,6 +1431,7 @@ elif page == "Dashboard":
 # PAGE: CONTRACT VIEWER
 # ─────────────────────────────────────────────
 elif page == "Contract Viewer":
+    selected_field = st.query_params.get("highlight", None)
     if "job_id" not in st.session_state:
         st.warning("No active job. Upload a contract first.")
         st.stop()
