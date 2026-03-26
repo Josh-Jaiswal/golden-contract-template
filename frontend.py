@@ -1510,47 +1510,218 @@ elif page == "Contract Viewer":
             </div>
             """, unsafe_allow_html=True)
         else:
-            # Bold conflict count — no "Failed" badge
+            # ── Session state for per-conflict user choices ──────────
+            if "conflict_overrides" not in st.session_state:
+                st.session_state.conflict_overrides = {}
+            if "conflict_custom_text" not in st.session_state:
+                st.session_state.conflict_custom_text = {}
+            if "regen_submitted" not in st.session_state:
+                st.session_state.regen_submitted = False
+
             st.markdown(f"""
             <div class="conflict-count-header">
               <div>
                 <div class="conflict-count-num">{len(conflicts)} conflict{'s' if len(conflicts) != 1 else ''} found</div>
-                <div class="conflict-count-label">Review each conflict below and verify resolution source</div>
+                <div class="conflict-count-label">Select a value for each conflict you want to override · then regenerate documents below</div>
               </div>
               <div class="conflict-count-icon">⚡</div>
             </div>
             """, unsafe_allow_html=True)
 
-            for i, conflict in enumerate(conflicts):
-                field    = conflict.get("field", f"Conflict {i+1}")
-                chosen   = conflict.get("chosen", "—")
-                source   = conflict.get("chosenSource", "—")
-                alts     = conflict.get("alternatives", [])
-                overridden = "; ".join(
-                    f"{a.get('source', '?')}: {str(a.get('value',''))}"
-                    for a in alts
-                ) or "—"
+            resolved_count = 0
 
-                conflict_html = f"""
-                <div class="conflict-box">
-                  <div class="conflict-box-header">⚡ {field}</div>
-                  <div class="conflict-body">
-                    <div class="conflict-side">
-                      <div class="conflict-doc-label">Chosen Value</div>
-                      <div class="conflict-text">{chosen}</div>
+            for i, conflict in enumerate(conflicts):
+                field   = conflict.get("field", f"Conflict {i+1}")
+                chosen  = conflict.get("chosen", "—")
+                source  = conflict.get("chosenSource", "—")
+                alts    = conflict.get("alternatives", [])
+
+                # Build the radio options: chosen + each alternative + custom
+                radio_options = [f"✅ Keep chosen  ·  {chosen}  [{source}]"]
+                alt_values    = []
+                for a in alts:
+                    alt_label = f"🔄 Use overridden  ·  {str(a.get('value','—'))}  [{a.get('source','?')}]"
+                    radio_options.append(alt_label)
+                    alt_values.append(str(a.get("value", "")))
+                radio_options.append("✏️ Enter custom value")
+
+                # Header card
+                st.markdown(f"""
+                <div style="
+                    background: var(--surface);
+                    border: 1px solid #2a2a2a;
+                    border-left: 3px solid rgba(255,230,0,0.5);
+                    border-radius: 10px;
+                    padding: 16px 20px 8px 20px;
+                    margin-bottom: 4px;
+                ">
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                    <div style="
+                        background:rgba(255,230,0,0.1);
+                        border:1px solid rgba(255,230,0,0.25);
+                        border-radius:5px;
+                        padding:2px 9px;
+                        font-family:'DM Mono',monospace;
+                        font-size:10px;
+                        color:var(--gold);
+                        letter-spacing:0.6px;
+                        text-transform:uppercase;
+                    ">Conflict {i+1} of {len(conflicts)}</div>
+                    <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);">⚡ {field}</div>
+                  </div>
+                  <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px;">
+                    <div>
+                      <div style="font-size:10px;color:var(--text-muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">Chosen Value</div>
+                      <div style="font-size:13px;color:var(--text);font-weight:500;">{chosen}</div>
                     </div>
-                    <div class="conflict-side">
-                      <div class="conflict-doc-label">Source</div>
-                      <div class="conflict-text">{source}</div>
+                    <div>
+                      <div style="font-size:10px;color:var(--text-muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">Source</div>
+                      <div style="font-size:13px;color:var(--text-dim);">{source}</div>
                     </div>
-                    <div class="conflict-side">
-                      <div class="conflict-doc-label">Overridden</div>
-                      <div class="conflict-text">{overridden}</div>
+                    {"".join(f'''<div>
+                      <div style="font-size:10px;color:var(--text-muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">Overridden · {a.get("source","?")}</div>
+                      <div style="font-size:13px;color:#aaa;">{str(a.get("value","—"))}</div>
+                    </div>''' for a in alts)}
+                  </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # Radio selector
+                current_choice = st.session_state.conflict_overrides.get(field, radio_options[0])
+                if current_choice not in radio_options:
+                    current_choice = radio_options[0]
+
+                chosen_option = st.radio(
+                    f"Resolution for **{field}**",
+                    radio_options,
+                    index=radio_options.index(current_choice),
+                    key=f"conflict_radio_{i}",
+                    label_visibility="collapsed",
+                )
+                st.session_state.conflict_overrides[field] = chosen_option
+
+                # Custom value text input — only shown when "Enter custom value" picked
+                if chosen_option == "✏️ Enter custom value":
+                    custom_val = st.text_input(
+                        "Your custom value",
+                        value=st.session_state.conflict_custom_text.get(field, ""),
+                        key=f"conflict_custom_{i}",
+                        placeholder=f"Type replacement value for '{field}'…",
+                    )
+                    st.session_state.conflict_custom_text[field] = custom_val
+
+                # Count as resolved if user has picked anything other than "keep chosen"
+                if not chosen_option.startswith("✅ Keep chosen"):
+                    # For custom, only count if they've typed something
+                    if chosen_option == "✏️ Enter custom value":
+                        if st.session_state.conflict_custom_text.get(field, "").strip():
+                            resolved_count += 1
+                    else:
+                        resolved_count += 1
+
+                st.markdown("<div style='margin-bottom:12px'></div>", unsafe_allow_html=True)
+
+            # ── Scroll nudge — appears once at least 1 conflict is resolved ──
+            if resolved_count > 0:
+                st.markdown(f"""
+                <div style="
+                    display:flex;
+                    align-items:center;
+                    gap:12px;
+                    background:rgba(255,230,0,0.06);
+                    border:1px solid rgba(255,230,0,0.2);
+                    border-radius:8px;
+                    padding:12px 18px;
+                    margin: 8px 0 20px 0;
+                    animation: fadeIn 0.4s ease;
+                ">
+                  <div style="font-size:18px;">👇</div>
+                  <div>
+                    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:600;color:var(--gold);">
+                        {resolved_count} override{'s' if resolved_count != 1 else ''} ready
+                    </div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
+                        Scroll down to regenerate your documents with the updated values
                     </div>
                   </div>
                 </div>
-                """
-                st.html(conflict_html)
+                """, unsafe_allow_html=True)
+
+            # ── Regenerate button — always visible, but pulsing when resolves > 0 ──
+            st.markdown("""
+            <div style="
+                border-top:1px solid #222;
+                margin: 16px 0 20px 0;
+            "></div>
+            """, unsafe_allow_html=True)
+
+            regen_label = f"⚡ Regenerate Documents ({resolved_count} override{'s' if resolved_count != 1 else ''})" if resolved_count > 0 else "⚡ Regenerate Documents"
+
+            if resolved_count > 0:
+                st.markdown("""
+                <style>
+                div[data-testid="stButton"] > button[kind="primary"] {
+                    box-shadow: 0 0 18px rgba(255,230,0,0.35), 0 0 6px rgba(255,230,0,0.2);
+                    animation: pulseBtn 2s ease-in-out infinite;
+                }
+                @keyframes pulseBtn {
+                    0%,100% { box-shadow: 0 0 10px rgba(255,230,0,0.2); }
+                    50%     { box-shadow: 0 0 26px rgba(255,230,0,0.55), 0 0 8px rgba(255,230,0,0.3); }
+                }
+                </style>
+                """, unsafe_allow_html=True)
+
+            if st.button(regen_label, type="primary", use_container_width=True):
+                # Build overrides dict to POST to API
+                overrides = {}
+                for i, conflict in enumerate(conflicts):
+                    field        = conflict.get("field", f"Conflict {i+1}")
+                    chosen_opt   = st.session_state.conflict_overrides.get(field, "")
+                    alts         = conflict.get("alternatives", [])
+
+                    if chosen_opt.startswith("✅ Keep chosen"):
+                        continue  # no override needed
+                    elif chosen_opt == "✏️ Enter custom value":
+                        custom = st.session_state.conflict_custom_text.get(field, "").strip()
+                        if custom:
+                            overrides[field] = custom
+                    else:
+                        # Extract the alt value — it's one of the alt_values
+                        for a in alts:
+                            if str(a.get("value", "")) in chosen_opt:
+                                overrides[field] = a.get("value", "")
+                                break
+
+                if not overrides:
+                    st.warning("No overrides selected — please choose an alternative or custom value for at least one conflict.")
+                else:
+                    with st.spinner("Submitting overrides and queuing regeneration…"):
+                        try:
+                            r = requests.post(
+                                f"{API_URL}/jobs/{job_id}/regenerate",
+                                headers={"X-API-Key": API_KEY},
+                                json={"overrides": overrides},
+                            )
+                            if r.status_code == 200:
+                                new_job_id = r.json().get("job_id", job_id)
+                                st.session_state.job_id = new_job_id
+                                # Clear override state for fresh run
+                                st.session_state.conflict_overrides = {}
+                                st.session_state.conflict_custom_text = {}
+                                st.session_state.page = "Job Status"
+                                st.rerun()
+                            elif r.status_code == 404:
+                                # API endpoint not yet built — fall back gracefully
+                                st.error("The /regenerate endpoint isn't deployed yet. Ask your backend dev to add POST /jobs/{job_id}/regenerate — see the spec below.")
+                                st.code(json.dumps({
+                                    "endpoint": f"POST /jobs/{job_id}/regenerate",
+                                    "body":     {"overrides": overrides},
+                                    "expected_response": {"job_id": "<new_or_same_job_id>", "status": "queued"}
+                                }, indent=2), language="json")
+                            else:
+                                st.error(f"API error {r.status_code}: {r.text}")
+                        except Exception as e:
+                            st.error(f"Connection failed: {e}")
 
     # ── TAB: MISSING FIELDS ───────────────────
     with tabs[2]:
