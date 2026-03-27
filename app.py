@@ -1149,38 +1149,100 @@ if page == "Upload & Analyze":
 
     with col_right:
         st.markdown("""
-        <div class="card" style="height:100%">
-          <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:600;margin-bottom:16px;color:var(--text)">What happens next?</div>
-          <div style="display:flex;flex-direction:column;gap:14px">
-            <div style="display:flex;gap:12px;align-items:flex-start">
-              <div style="background:var(--gold-dim);border:1px solid rgba(255,230,0,0.2);border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px">1</div>
-              <div>
-                <div style="font-size:13px;font-weight:500;color:var(--text)">Document Parsing</div>
-                <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Text extraction and structure detection</div>
+        <div class="card" style="height:100%;padding:22px 24px;">
+
+          <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;
+               color:var(--text-muted);letter-spacing:1.4px;text-transform:uppercase;
+               margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:12px;">
+            Analysis Pipeline
+          </div>
+
+          <!-- Step 1 -->
+          <div style="display:flex;gap:16px;align-items:flex-start;">
+            <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">
+              <div style="width:34px;height:34px;background:var(--gold-dim);border:1px solid rgba(255,230,0,0.3);
+                   border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFE600" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                </svg>
               </div>
+              <div style="width:1px;height:28px;background:linear-gradient(to bottom,rgba(255,230,0,0.3),rgba(255,230,0,0.05));margin-top:4px;"></div>
             </div>
-            <div style="display:flex;gap:12px;align-items:flex-start">
-              <div style="background:var(--gold-dim);border:1px solid rgba(255,230,0,0.2);border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px">2</div>
-              <div>
-                <div style="font-size:13px;font-weight:500;color:var(--text)">Clause Extraction</div>
-                <div style="font-size:12px;color:var(--text-muted);margin-top:2px">AI identifies and categorises legal clauses</div>
-              </div>
-            </div>
-            <div style="display:flex;gap:12px;align-items:flex-start">
-              <div style="background:var(--gold-dim);border:1px solid rgba(255,230,0,0.2);border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px">3</div>
-              <div>
-                <div style="font-size:13px;font-weight:500;color:var(--text)">Conflict Detection</div>
-                <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Cross-document inconsistency analysis</div>
-              </div>
-            </div>
-            <div style="display:flex;gap:12px;align-items:flex-start">
-              <div style="background:var(--gold-dim);border:1px solid rgba(255,230,0,0.2);border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px">4</div>
-              <div>
-                <div style="font-size:13px;font-weight:500;color:var(--text)">Document Generation</div>
-                <div style="font-size:12px;color:var(--text-muted);margin-top:2px">NDA and SOW PDFs generated and ready</div>
+            <div style="padding-top:6px;padding-bottom:20px;">
+              <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;">Document Parsing</div>
+              <div style="font-size:12px;color:var(--text-muted);line-height:1.6;">
+                Your file is uploaded and parsed — PDF, DOCX, email thread, or audio transcript. 
+                Raw text and structure are extracted, preserving section hierarchy and clause boundaries.
               </div>
             </div>
           </div>
+
+          <!-- Step 2 -->
+          <div style="display:flex;gap:16px;align-items:flex-start;">
+            <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">
+              <div style="width:34px;height:34px;background:var(--gold-dim);border:1px solid rgba(255,230,0,0.3);
+                   border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFE600" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+                </svg>
+              </div>
+              <div style="width:1px;height:28px;background:linear-gradient(to bottom,rgba(255,230,0,0.3),rgba(255,230,0,0.05));margin-top:4px;"></div>
+            </div>
+            <div style="padding-top:6px;padding-bottom:20px;">
+              <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;">AI Field Extraction</div>
+              <div style="font-size:12px;color:var(--text-muted);line-height:1.6;">
+                Azure Content Understanding and GPT-4o analyse the parsed content, 
+                mapping 45+ canonical fields — parties, dates, commercials, legal terms, 
+                confidentiality clauses, scope, and governance.
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div style="display:flex;gap:16px;align-items:flex-start;">
+            <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">
+              <div style="width:34px;height:34px;background:var(--gold-dim);border:1px solid rgba(255,230,0,0.3);
+                   border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFE600" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <div style="width:1px;height:28px;background:linear-gradient(to bottom,rgba(255,230,0,0.3),rgba(255,230,0,0.05));margin-top:4px;"></div>
+            </div>
+            <div style="padding-top:6px;padding-bottom:20px;">
+              <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;">Conflict &amp; Gap Detection</div>
+              <div style="font-size:12px;color:var(--text-muted);line-height:1.6;">
+                Extracted values are merged across all source documents. Where sources 
+                disagree — different dates, payment terms, or governing law — conflicts 
+                are flagged with both values shown side-by-side for you to resolve.
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 4 -->
+          <div style="display:flex;gap:16px;align-items:flex-start;">
+            <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">
+              <div style="width:34px;height:34px;background:var(--gold-dim);border:1px solid rgba(255,230,0,0.3);
+                   border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFE600" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+              </div>
+              <div style="width:1px;height:28px;background:linear-gradient(to bottom,rgba(255,230,0,0.05),transparent);margin-top:4px;"></div>
+            </div>
+            <div style="padding-top:6px;">
+              <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;">PDF Generation</div>
+              <div style="font-size:12px;color:var(--text-muted);line-height:1.6;">
+                Standardised NDA and SOW documents are generated as ready-to-review PDFs, 
+                with an audit trail appendix capturing extraction provenance, 
+                confidence scores, and any unresolved items.
+              </div>
+            </div>
+          </div>
+
         </div>
         """, unsafe_allow_html=True)
 
@@ -1194,14 +1256,7 @@ elif page == "Job Status":
 
     job_id = st.session_state.job_id
     st.markdown(f'<div class="section-title">Job Status</div>', unsafe_allow_html=True)
-    st.markdown(
-        f'<div class="section-sub">'
-        f'<span style="font-family:\'DM Sans\',sans-serif;color:var(--text-muted);font-size:12px;'
-        f'text-transform:uppercase;letter-spacing:0.8px;font-weight:600;">Job ID&nbsp;&nbsp;</span>'
-        f'<span style="font-family:\'DM Mono\',monospace;font-size:13px;color:var(--text-dim);">{job_id}</span>'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown(f'<div class="section-sub" style="font-family:\'DM Mono\',monospace">{job_id}</div>', unsafe_allow_html=True)
 
     timeline_ph = st.empty()
     status_ph   = st.empty()
@@ -1652,35 +1707,36 @@ elif page == "Contract Viewer":
 
         if client.get("name") or vendor.get("name"):
             col_c, col_v = st.columns(2, gap="large")
+
+            def _render_party_col(party_data, label):
+                """Render one party's name + signatories with edit buttons."""
+                st.markdown(
+                    f'<div style="font-size:10px;font-family:\'DM Mono\',monospace;'
+                    f'color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;'
+                    f'margin-bottom:6px;">{label}</div>',
+                    unsafe_allow_html=True,
+                )
+                party_key = label.lower()   # "client" or "vendor"
+                render_summary_row(
+                    "Name",
+                    fmt_val(party_data.get("name")),
+                    canon_path=f"parties.{party_key}.name",
+                )
+                for si, sig in enumerate(party_data.get("signatories", [])):
+                    if sig.get("name"):
+                        sig_display = sig.get("name", "")
+                        if sig.get("title"):
+                            sig_display += f"  ·  {sig['title']}"
+                        render_summary_row(
+                            f"Signatory {si + 1}",
+                            fmt_val(sig_display),
+                            canon_path=f"parties.{party_key}.signatories.{si}.name",
+                        )
+
             with col_c:
-                st.markdown(
-                    '<div style="font-size:10px;font-family:\'DM Mono\',monospace;color:var(--text-muted);'
-                    'text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Client</div>',
-                    unsafe_allow_html=True
-                )
-                render_summary_row("Name", fmt_val(client.get("name")), canon_path="parties.client.name")
-                # Signatories
-                for si, sig in enumerate(client.get("signatories", [])):
-                    if sig.get("name"):
-                        render_summary_row(
-                            f"Signatory {si+1}",
-                            fmt_val(f"{sig.get('name','')}  ·  {sig.get('title','')}".strip(" ·")),
-                            canon_path=f"parties.client.signatories.{si}.name"
-                        )
+                _render_party_col(client, "Client")
             with col_v:
-                st.markdown(
-                    '<div style="font-size:10px;font-family:\'DM Mono\',monospace;color:var(--text-muted);'
-                    'text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Vendor</div>',
-                    unsafe_allow_html=True
-                )
-                render_summary_row("Name", fmt_val(vendor.get("name")), canon_path="parties.vendor.name")
-                for si, sig in enumerate(vendor.get("signatories", [])):
-                    if sig.get("name"):
-                        render_summary_row(
-                            f"Signatory {si+1}",
-                            fmt_val(f"{sig.get('name','')}  ·  {sig.get('title','')}".strip(" ·")),
-                            canon_path=f"parties.vendor.signatories.{si}.name"
-                        )
+                _render_party_col(vendor, "Vendor")
         else:
             st.markdown('<div style="color:var(--text-muted);font-size:13px;">No party information extracted.</div>', unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
@@ -1935,24 +1991,15 @@ elif page == "Contract Viewer":
                 chosen_short   = chosen_display[:80] + "…" if len(chosen_display) > 80 else chosen_display
 
                 # Build the radio options: chosen + each alternative + custom
-                # Also keep a separate label→value map so long values that get
-                # truncated in the radio label can still be recovered exactly.
-                radio_options  = [f"✅ Keep chosen  ·  {chosen_short}  [{source}]"]
-                alt_values     = []
-                label_to_value = {}   # radio label → raw canonical value
+                radio_options = [f"✅ Keep chosen  ·  {chosen_short}  [{source}]"]
+                alt_values    = []
                 for a in alts:
                     alt_display = _clean_conflict_val(a.get("value", "—"))
                     alt_short   = alt_display[:80] + "…" if len(alt_display) > 80 else alt_display
                     alt_label   = f"🔄 Use overridden  ·  {alt_short}  [{a.get('source','?')}]"
                     radio_options.append(alt_label)
                     alt_values.append(str(a.get("value", "")))
-                    label_to_value[alt_label] = str(a.get("value", ""))
                 radio_options.append("✏️ Enter custom value")
-
-                # Persist the label→value map so the Regenerate button can look it up
-                if "conflict_label_values" not in st.session_state:
-                    st.session_state.conflict_label_values = {}
-                st.session_state.conflict_label_values[field] = label_to_value
 
                 # Header card
                 st.markdown(f"""
@@ -2084,9 +2131,9 @@ elif page == "Contract Viewer":
                 # Build overrides dict to POST to API
                 overrides = {}
                 for i, conflict in enumerate(conflicts):
-                    field      = conflict.get("field", f"Conflict {i+1}")
-                    chosen_opt = st.session_state.conflict_overrides.get(field, "")
-                    alts       = conflict.get("alternatives", [])
+                    field        = conflict.get("field", f"Conflict {i+1}")
+                    chosen_opt   = st.session_state.conflict_overrides.get(field, "")
+                    alts         = conflict.get("alternatives", [])
 
                     if chosen_opt.startswith("✅ Keep chosen"):
                         continue  # no override needed
@@ -2095,21 +2142,11 @@ elif page == "Contract Viewer":
                         if custom:
                             overrides[field] = custom
                     else:
-                        # Use the stored label→value map from conflict_label_values.
-                        # Falls back to substring search if the map entry is missing
-                        # (e.g. after a hot-reload where session state rebuilt).
-                        stored_map = st.session_state.get("conflict_label_values", {})
-                        field_map  = stored_map.get(field, {})
-                        if chosen_opt in field_map:
-                            overrides[field] = field_map[chosen_opt]
-                        else:
-                            # Fallback: match by truncated prefix (covers short values)
-                            for a in alts:
-                                raw = str(a.get("value", ""))
-                                truncated = raw[:80]
-                                if truncated in chosen_opt or raw in chosen_opt:
-                                    overrides[field] = raw
-                                    break
+                        # Extract the alt value — it's one of the alt_values
+                        for a in alts:
+                            if str(a.get("value", "")) in chosen_opt:
+                                overrides[field] = a.get("value", "")
+                                break
 
                 if not overrides:
                     st.warning("No overrides selected — please choose an alternative or custom value for at least one conflict.")
