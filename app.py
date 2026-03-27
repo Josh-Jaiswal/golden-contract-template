@@ -4,6 +4,7 @@ import time
 import json
 import base64
 from datetime import datetime
+from pathlib import Path
 import pytz
 API_URL = "http://localhost:8000"
 API_KEY = "GoldenEY1479"
@@ -100,13 +101,141 @@ html, body, [class*="css"], .stApp {
   letter-spacing: 0.5px;
 }
 
-/* ── NAV ── */
-.ey-nav {
+/* ── NAV CARD ── */
+.ey-nav-card {
   display: flex;
-  gap: 2px;
-  padding: 12px 32px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg);
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  margin: 14px 0 0 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.ey-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+}
+.ey-nav-item:hover {
+  color: var(--text);
+  background: var(--surface2);
+  border-color: var(--border-bright);
+}
+.ey-nav-item.active {
+  color: var(--gold);
+  background: var(--gold-dim);
+  border-color: rgba(255,230,0,0.25);
+  font-weight: 600;
+}
+.ey-nav-item.active .ey-nav-icon {
+  filter: drop-shadow(0 0 4px rgba(255,230,0,0.5));
+}
+.ey-nav-icon { font-size: 14px; }
+.ey-nav-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+.ey-nav-spacer { flex: 1; }
+.ey-nav-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+/* ── PAGE HEADER CARD ── */
+.page-header-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 24px;
+  margin: 20px 0 28px 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+}
+.page-header-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--gold);
+  border-radius: 3px 0 0 3px;
+}
+.page-header-icon {
+  font-size: 22px;
+  width: 42px; height: 42px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--gold-dim);
+  border: 1px solid rgba(255,230,0,0.2);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+.page-header-text { flex: 1; min-width: 0; }
+.page-header-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 3px;
+}
+.page-header-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
+.page-header-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+.page-header-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.page-header-pill {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 3px 10px;
+  border-radius: 20px;
 }
 
 /* ── SECTION TITLES ── */
@@ -544,6 +673,12 @@ div[data-testid="stMetric"] {
 }
 .stAlert { background: var(--surface2) !important; border-radius: 8px !important; border: 1px solid var(--border) !important; }
 
+/* Hide nav routing buttons — visual nav is the HTML card above */
+.nav-btn-hide { height: 0 !important; overflow: hidden !important; position: absolute !important;
+  opacity: 0 !important; pointer-events: none !important; }
+.nav-btn-hide * { height: 0 !important; min-height: 0 !important; padding: 0 !important;
+  margin: 0 !important; border: none !important; }
+
 /* Hide streamlit chrome */
 #MainMenu, footer, header { visibility: hidden; }
 .stDeployButton { display: none; }
@@ -952,25 +1087,48 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
-# NAV
+# NAV CARD
 # ─────────────────────────────────────────────
 pages = ["Upload & Analyze", "Job Status", "Dashboard", "Contract Viewer"]
 if "page" not in st.session_state:
     st.session_state.page = "Upload & Analyze"
 
-nav_cols = st.columns([1.2, 1, 1, 1.2, 4])
-page_map = {
-    "Upload & Analyze": 0,
-    "Job Status": 1,
-    "Dashboard": 2,
-    "Contract Viewer": 3,
-}
-for i, p in enumerate(pages):
-    if nav_cols[i].button(p, key=f"nav_{p}"):
-        st.session_state.page = p
+page = st.session_state.page
+
+NAV_ITEMS = [
+    ("Upload & Analyze", "⚡", "Upload & analyze contracts"),
+    ("Job Status",       "📡", "Track active job progress"),
+    ("Dashboard",        "📊", "All jobs overview"),
+    ("Contract Viewer",  "📄", "Canonical analysis & conflicts"),
+]
+
+nav_html_items = ""
+for p, icon, _ in NAV_ITEMS:
+    active_cls = " active" if page == p else ""
+    nav_html_items += f'''<div class="ey-nav-item{active_cls}" onclick="void(0)">
+      <span class="ey-nav-icon">{icon}</span>{p}
+    </div>'''
+
+st.markdown(f"""
+<div class="ey-nav-card">
+  {nav_html_items}
+  <div class="ey-nav-spacer"></div>
+  <div class="ey-nav-badge">v1.0</div>
+</div>
+""", unsafe_allow_html=True)
+
+# Real nav via hidden Streamlit buttons (zero height, used for routing only)
+st.markdown('<div class="nav-btn-hide">', unsafe_allow_html=True)
+_btn_cols = st.columns(len(pages))
+for i, (p, _, _) in enumerate(NAV_ITEMS):
+    with _btn_cols[i]:
+        if st.button(p, key=f"nav_{p}", help=NAV_ITEMS[i][2]):
+            st.session_state.page = p
+            st.rerun()
+st.markdown('</div>', unsafe_allow_html=True)
 
 page = st.session_state.page
-st.markdown('<div style="padding: 32px 32px 0 32px;">', unsafe_allow_html=True)
+st.markdown('<div style="padding: 0 32px;">', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
 # HELPERS
@@ -1125,8 +1283,19 @@ def render_missing_fields_tree(missing_list):
 # PAGE: UPLOAD
 # ─────────────────────────────────────────────
 if page == "Upload & Analyze":
-    st.markdown('<div class="section-title">Upload Contract</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-sub">Upload a contract document to begin AI-powered extraction and analysis.</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="page-header-card">
+      <div class="page-header-icon">⚡</div>
+      <div class="page-header-text">
+        <div class="page-header-label">Upload & Analyze</div>
+        <div class="page-header-title">Upload Contract</div>
+        <div class="page-header-sub">Upload a contract document to begin AI-powered extraction and analysis.</div>
+      </div>
+      <div class="page-header-meta">
+        <div class="page-header-pill">PDF · DOCX · EML · MP3 · WAV · M4A</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     col_left, col_right = st.columns([1.6, 1], gap="large")
 
@@ -1282,15 +1451,21 @@ elif page == "Job Status":
         st.stop()
 
     job_id = st.session_state.job_id
-    st.markdown(f'<div class="section-title">Job Status</div>', unsafe_allow_html=True)
-    st.markdown(
-        f'<div class="section-sub">'
-        f'<span style="font-family:\'DM Sans\',sans-serif;color:var(--text-muted);font-size:12px;'
-        f'text-transform:uppercase;letter-spacing:0.8px;font-weight:600;">Job ID&nbsp;&nbsp;</span>'
-        f'<span style="font-family:\'DM Mono\',monospace;font-size:13px;color:var(--text-dim);">{job_id}</span>'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
+    job_id   = st.session_state.job_id
+    short_id = job_id[:8] + "\u2026" + job_id[-6:]
+    st.markdown(f"""
+    <div class="page-header-card">
+      <div class="page-header-icon">\U0001f4e1</div>
+      <div class="page-header-text">
+        <div class="page-header-label">Pipeline</div>
+        <div class="page-header-title">Job Status</div>
+        <div class="page-header-sub">Track extraction, analysis and document generation in real time.</div>
+      </div>
+      <div class="page-header-meta">
+        <div class="page-header-pill">JOB · {short_id}</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     timeline_ph = st.empty()
     status_ph   = st.empty()
@@ -1514,8 +1689,16 @@ elif page == "Job Status":
 # PAGE: DASHBOARD
 # ─────────────────────────────────────────────
 elif page == "Dashboard":
-    st.markdown('<div class="section-title">All Jobs</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-sub">Overview of all contract analysis jobs.</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="page-header-card">
+      <div class="page-header-icon">📊</div>
+      <div class="page-header-text">
+        <div class="page-header-label">Overview</div>
+        <div class="page-header-title">All Jobs</div>
+        <div class="page-header-sub">Monitor all contract analysis jobs, download outputs and track pipeline health.</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     r = api_get("/jobs")
     if not r:
@@ -1585,15 +1768,18 @@ elif page == "Contract Viewer":
 
     job_id = st.session_state.job_id
 
-    # ── Gold banner indicating active page ──
+    short_id_cv = job_id[:8] + "…" + job_id[-6:]
     st.markdown(f"""
-    <div class="cv-page-banner">
-      <div class="cv-page-banner-icon">📄</div>
-      <div>
-        <div class="cv-page-banner-label">Contract Viewer</div>
-        <div class="cv-page-banner-title">Canonical Analysis</div>
+    <div class="page-header-card">
+      <div class="page-header-icon">📄</div>
+      <div class="page-header-text">
+        <div class="page-header-label">Contract Viewer</div>
+        <div class="page-header-title">Canonical Analysis</div>
+        <div class="page-header-sub">Review extracted fields, resolve conflicts and fill missing values.</div>
       </div>
-      <div class="cv-page-banner-id">{job_id[:8]}…{job_id[-6:]}</div>
+      <div class="page-header-meta">
+        <div class="page-header-pill">JOB · {short_id_cv}</div>
+      </div>
     </div>
     """, unsafe_allow_html=True)
 
