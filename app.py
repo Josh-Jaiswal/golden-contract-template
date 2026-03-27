@@ -548,6 +548,33 @@ div[data-testid="stMetric"] {
 #MainMenu, footer, header { visibility: hidden; }
 .stDeployButton { display: none; }
 
+/* ── TEXT INPUT STATES ── */
+div[data-testid="stTextInput"] input {
+  background: var(--surface2) !important;
+  border: 1px solid var(--border-bright) !important;
+  border-radius: 6px !important;
+  color: var(--text) !important;
+  transition: border-color 0.2s, box-shadow 0.2s !important;
+}
+div[data-testid="stTextInput"] input:focus:placeholder-shown {
+  border-color: var(--red) !important;
+  box-shadow: 0 0 0 2px rgba(255,77,77,0.18) !important;
+  outline: none !important;
+}
+div[data-testid="stTextInput"] input:focus:not(:placeholder-shown) {
+  border-color: var(--green) !important;
+  box-shadow: 0 0 0 2px rgba(0,232,122,0.18) !important;
+  outline: none !important;
+}
+div[data-testid="stTextInput"] input:not(:placeholder-shown) {
+  border-color: rgba(0,232,122,0.45) !important;
+  box-shadow: none !important;
+}
+div[data-testid="stTextInput"] input:not(:focus):placeholder-shown {
+  border-color: var(--border-bright) !important;
+  box-shadow: none !important;
+}
+
 /* ── FOOTER ── */
 .ey-footer {
   margin-top: 60px;
@@ -1256,7 +1283,14 @@ elif page == "Job Status":
 
     job_id = st.session_state.job_id
     st.markdown(f'<div class="section-title">Job Status</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="section-sub" style="font-family:\'DM Mono\',monospace">{job_id}</div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="section-sub">'
+        f'<span style="font-family:\'DM Sans\',sans-serif;color:var(--text-muted);font-size:12px;'
+        f'text-transform:uppercase;letter-spacing:0.8px;font-weight:600;">Job ID&nbsp;&nbsp;</span>'
+        f'<span style="font-family:\'DM Mono\',monospace;font-size:13px;color:var(--text-dim);">{job_id}</span>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
 
     timeline_ph = st.empty()
     status_ph   = st.empty()
@@ -1708,35 +1742,86 @@ elif page == "Contract Viewer":
         if client.get("name") or vendor.get("name"):
             col_c, col_v = st.columns(2, gap="large")
 
-            def _render_party_col(party_data, label):
-                """Render one party's name + signatories with edit buttons."""
-                st.markdown(
-                    f'<div style="font-size:10px;font-family:\'DM Mono\',monospace;'
-                    f'color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;'
-                    f'margin-bottom:6px;">{label}</div>',
-                    unsafe_allow_html=True,
-                )
-                party_key = label.lower()   # "client" or "vendor"
-                render_summary_row(
-                    "Name",
-                    fmt_val(party_data.get("name")),
-                    canon_path=f"parties.{party_key}.name",
-                )
-                for si, sig in enumerate(party_data.get("signatories", [])):
-                    if sig.get("name"):
-                        sig_display = sig.get("name", "")
-                        if sig.get("title"):
-                            sig_display += f"  ·  {sig['title']}"
-                        render_summary_row(
-                            f"Signatory {si + 1}",
-                            fmt_val(sig_display),
-                            canon_path=f"parties.{party_key}.signatories.{si}.name",
-                        )
+            # render_summary_row uses st.columns() internally which Streamlit
+            # forbids inside an already-active column context — it silently
+            # breaks layout causing vendor content to spill into client's column.
+            # Instead: render the display HTML manually and place a standalone
+            # edit button underneath each field, staying within one column only.
+
+            def _party_field(party_data, party_key, field_label, field_value, canon_path):
+                """Render one field row for a party — no nested st.columns."""
+                if not field_value:
+                    return
+                fk = canon_path
+                is_editing = fk in st.session_state.summary_editing
+                is_edited  = fk in st.session_state.summary_edits
+                display    = st.session_state.summary_edits[fk] if is_edited else field_value
+
+                edited_pill = (
+                    ' <span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;'
+                    'font-family:\'DM Mono\',monospace;color:var(--gold);background:rgba(255,230,0,0.1);'
+                    'border:1px solid rgba(255,230,0,0.2);border-radius:4px;padding:1px 5px;">✎ edited</span>'
+                ) if is_edited else ""
+
+                if not is_editing:
+                    color = "var(--gold)" if is_edited else "var(--text)"
+                    st.markdown(
+                        f'<div class="summary-row" style="align-items:flex-start;">'
+                        f'<div class="summary-key" style="font-size:11px;">{field_label}</div>'
+                        f'<div class="summary-val" style="color:{color};">{display}{edited_pill}</div>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+                    if st.button("✎", key=f"eb_{fk}", help=f"Edit {field_label}"):
+                        st.session_state.summary_editing.add(fk)
+                        st.rerun()
+                else:
+                    st.markdown(
+                        f'<div style="font-family:\'DM Mono\',monospace;font-size:11px;'
+                        f'color:var(--gold);text-transform:uppercase;letter-spacing:0.6px;'
+                        f'margin-bottom:4px;">{field_label}</div>',
+                        unsafe_allow_html=True,
+                    )
+                    new_val = st.text_input(
+                        field_label, value=str(display),
+                        key=f"ei_{fk}", label_visibility="collapsed",
+                    )
+                    c_save, c_cancel = st.columns([1, 1])
+                    with c_save:
+                        if st.button("✓ Save", key=f"sv_{fk}"):
+                            st.session_state.summary_edits[fk] = new_val
+                            _patch_canonical(canon_path, new_val)
+                            st.session_state.summary_editing.discard(fk)
+                            st.rerun()
+                    with c_cancel:
+                        if st.button("✕ Cancel", key=f"cx_{fk}"):
+                            st.session_state.summary_editing.discard(fk)
+                            st.rerun()
+                    st.markdown('<div style="border-bottom:1px solid var(--border);margin:4px 0 6px 0"></div>', unsafe_allow_html=True)
 
             with col_c:
-                _render_party_col(client, "Client")
+                st.markdown(
+                    '<div style="font-size:10px;font-family:\'DM Mono\',monospace;color:var(--text-muted);'
+                    'text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Client</div>',
+                    unsafe_allow_html=True,
+                )
+                _party_field(client, "client", "Name", client.get("name"), "parties.client.name")
+                for si, sig in enumerate(client.get("signatories", [])):
+                    if sig.get("name"):
+                        sig_val = sig["name"] + (f"  ·  {sig['title']}" if sig.get("title") else "")
+                        _party_field(client, "client", f"Signatory {si+1}", sig_val, f"parties.client.signatories.{si}.name")
+
             with col_v:
-                _render_party_col(vendor, "Vendor")
+                st.markdown(
+                    '<div style="font-size:10px;font-family:\'DM Mono\',monospace;color:var(--text-muted);'
+                    'text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Vendor</div>',
+                    unsafe_allow_html=True,
+                )
+                _party_field(vendor, "vendor", "Name", vendor.get("name"), "parties.vendor.name")
+                for si, sig in enumerate(vendor.get("signatories", [])):
+                    if sig.get("name"):
+                        sig_val = sig["name"] + (f"  ·  {sig['title']}" if sig.get("title") else "")
+                        _party_field(vendor, "vendor", f"Signatory {si+1}", sig_val, f"parties.vendor.signatories.{si}.name")
         else:
             st.markdown('<div style="color:var(--text-muted);font-size:13px;">No party information extracted.</div>', unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
@@ -1990,16 +2075,25 @@ elif page == "Contract Viewer":
                 chosen_display = _clean_conflict_val(chosen)
                 chosen_short   = chosen_display[:80] + "…" if len(chosen_display) > 80 else chosen_display
 
-                # Build the radio options: chosen + each alternative + custom
-                radio_options = [f"✅ Keep chosen  ·  {chosen_short}  [{source}]"]
-                alt_values    = []
+                # Build the radio options: chosen + each alternative + custom.
+                # Also store a label→full-value map so the regenerate button can
+                # recover the exact value even when the label is truncated at 80 chars.
+                radio_options  = [f"✅ Keep chosen  ·  {chosen_short}  [{source}]"]
+                alt_values     = []
+                label_to_value = {}
                 for a in alts:
                     alt_display = _clean_conflict_val(a.get("value", "—"))
                     alt_short   = alt_display[:80] + "…" if len(alt_display) > 80 else alt_display
                     alt_label   = f"🔄 Use overridden  ·  {alt_short}  [{a.get('source','?')}]"
                     radio_options.append(alt_label)
                     alt_values.append(str(a.get("value", "")))
+                    label_to_value[alt_label] = str(a.get("value", ""))
                 radio_options.append("✏️ Enter custom value")
+
+                # Persist map so Regenerate button can look up exact values
+                if "conflict_label_values" not in st.session_state:
+                    st.session_state.conflict_label_values = {}
+                st.session_state.conflict_label_values[field] = label_to_value
 
                 # Header card
                 st.markdown(f"""
@@ -2136,17 +2230,24 @@ elif page == "Contract Viewer":
                     alts         = conflict.get("alternatives", [])
 
                     if chosen_opt.startswith("✅ Keep chosen"):
-                        continue  # no override needed
+                        continue
                     elif chosen_opt == "✏️ Enter custom value":
                         custom = st.session_state.conflict_custom_text.get(field, "").strip()
                         if custom:
                             overrides[field] = custom
                     else:
-                        # Extract the alt value — it's one of the alt_values
-                        for a in alts:
-                            if str(a.get("value", "")) in chosen_opt:
-                                overrides[field] = a.get("value", "")
-                                break
+                        # Use stored label→value map — avoids substring mismatch on
+                        # long values that were truncated in the radio label
+                        field_map = st.session_state.get("conflict_label_values", {}).get(field, {})
+                        if chosen_opt in field_map:
+                            overrides[field] = field_map[chosen_opt]
+                        else:
+                            # Fallback for short values where full text fits in label
+                            for a in alts:
+                                raw = str(a.get("value", ""))
+                                if raw[:80] in chosen_opt or raw in chosen_opt:
+                                    overrides[field] = raw
+                                    break
 
                 if not overrides:
                     st.warning("No overrides selected — please choose an alternative or custom value for at least one conflict.")
