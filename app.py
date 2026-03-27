@@ -117,24 +117,23 @@ html, body, [class*="css"], .stApp {
 .ey-nav-item {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 9px 18px;
+  flex: 1;                    /* equal width — matches st.columns(4) */
+  padding: 9px 12px;
   border-radius: 8px;
   font-family: 'DM Sans', sans-serif;
   font-size: 13px;
   font-weight: 500;
   color: var(--text-muted);
-  cursor: pointer;
+  cursor: default;            /* real button on top handles cursor */
   border: 1px solid transparent;
   transition: all 0.15s ease;
   text-decoration: none;
   white-space: nowrap;
   letter-spacing: 0.2px;
-}
-.ey-nav-item:hover {
-  color: var(--text);
-  background: var(--surface2);
-  border-color: var(--border-bright);
+  user-select: none;
+  pointer-events: none;       /* pass clicks through to overlay button */
 }
 .ey-nav-item.active {
   color: var(--gold);
@@ -673,11 +672,42 @@ div[data-testid="stMetric"] {
 }
 .stAlert { background: var(--surface2) !important; border-radius: 8px !important; border: 1px solid var(--border) !important; }
 
-/* Hide nav routing buttons — visual nav is the HTML card above */
-.nav-btn-hide { height: 0 !important; overflow: hidden !important; position: absolute !important;
-  opacity: 0 !important; pointer-events: none !important; }
-.nav-btn-hide * { height: 0 !important; min-height: 0 !important; padding: 0 !important;
-  margin: 0 !important; border: none !important; }
+/* Nav routing buttons — overlaid invisibly on top of the visual nav card */
+.nav-btn-overlay {
+  position: relative;
+  margin-top: -58px;
+  height: 58px;
+  overflow: visible;
+  z-index: 10;
+}
+.nav-btn-overlay > div[data-testid="stHorizontalBlock"] {
+  height: 58px !important;
+  gap: 6px !important;
+  padding: 0 16px !important;
+  align-items: stretch !important;
+}
+.nav-btn-overlay .stButton,
+.nav-btn-overlay div[data-testid="column"] {
+  height: 58px !important;
+}
+.nav-btn-overlay .stButton > button {
+  width: 100% !important;
+  height: 58px !important;
+  min-height: 58px !important;
+  opacity: 0 !important;
+  cursor: pointer !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 8px !important;
+}
+/* Kill the gap Streamlit adds under button columns */
+.nav-btn-overlay div[data-testid="column"] > div {
+  padding: 0 !important;
+  gap: 0 !important;
+}
 
 /* Hide streamlit chrome */
 #MainMenu, footer, header { visibility: hidden; }
@@ -1105,24 +1135,23 @@ NAV_ITEMS = [
 nav_html_items = ""
 for p, icon, _ in NAV_ITEMS:
     active_cls = " active" if page == p else ""
-    nav_html_items += f'''<div class="ey-nav-item{active_cls}" onclick="void(0)">
+    nav_html_items += f'''<div class="ey-nav-item{active_cls}" >
       <span class="ey-nav-icon">{icon}</span>{p}
     </div>'''
 
 st.markdown(f"""
 <div class="ey-nav-card">
   {nav_html_items}
-  <div class="ey-nav-spacer"></div>
-  <div class="ey-nav-badge">v1.0</div>
+  <div class="ey-nav-badge" style="flex-shrink:0;margin-left:8px;">v1.0</div>
 </div>
 """, unsafe_allow_html=True)
 
-# Real nav via hidden Streamlit buttons (zero height, used for routing only)
-st.markdown('<div class="nav-btn-hide">', unsafe_allow_html=True)
+# Real nav buttons — overlaid invisibly on top of the HTML card above
+st.markdown('<div class="nav-btn-overlay">', unsafe_allow_html=True)
 _btn_cols = st.columns(len(pages))
 for i, (p, _, _) in enumerate(NAV_ITEMS):
     with _btn_cols[i]:
-        if st.button(p, key=f"nav_{p}", help=NAV_ITEMS[i][2]):
+        if st.button(p, key=f"nav_{p}"):
             st.session_state.page = p
             st.rerun()
 st.markdown('</div>', unsafe_allow_html=True)
