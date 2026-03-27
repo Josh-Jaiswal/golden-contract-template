@@ -548,38 +548,6 @@ div[data-testid="stMetric"] {
 #MainMenu, footer, header { visibility: hidden; }
 .stDeployButton { display: none; }
 
-/* ── MISSING FIELD INPUT STATES ── */
-/* Default: neutral border */
-div[data-testid="stTextInput"] input {
-  background: var(--surface2) !important;
-  border: 1px solid var(--border-bright) !important;
-  border-radius: 6px !important;
-  color: var(--text) !important;
-  transition: border-color 0.2s, box-shadow 0.2s !important;
-}
-/* Focus (typing): red glow to indicate "needs filling" */
-div[data-testid="stTextInput"] input:focus:placeholder-shown {
-  border-color: var(--red) !important;
-  box-shadow: 0 0 0 2px rgba(255,77,77,0.18) !important;
-  outline: none !important;
-}
-/* Filled + focused: green glow — confirmed entry */
-div[data-testid="stTextInput"] input:focus:not(:placeholder-shown) {
-  border-color: var(--green) !important;
-  box-shadow: 0 0 0 2px rgba(0,232,122,0.18) !important;
-  outline: none !important;
-}
-/* Filled + blurred: subtle green border to show it's done */
-div[data-testid="stTextInput"] input:not(:placeholder-shown) {
-  border-color: rgba(0,232,122,0.45) !important;
-  box-shadow: none !important;
-}
-/* Blurred + empty: back to neutral — no red residue */
-div[data-testid="stTextInput"] input:not(:focus):placeholder-shown {
-  border-color: var(--border-bright) !important;
-  box-shadow: none !important;
-}
-
 /* ── FOOTER ── */
 .ey-footer {
   margin-top: 60px;
@@ -1226,7 +1194,14 @@ elif page == "Job Status":
 
     job_id = st.session_state.job_id
     st.markdown(f'<div class="section-title">Job Status</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="section-sub" style="font-family:\'DM Mono\',monospace">{job_id}</div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="section-sub">'
+        f'<span style="font-family:\'DM Sans\',sans-serif;color:var(--text-muted);font-size:12px;'
+        f'text-transform:uppercase;letter-spacing:0.8px;font-weight:600;">Job ID&nbsp;&nbsp;</span>'
+        f'<span style="font-family:\'DM Mono\',monospace;font-size:13px;color:var(--text-dim);">{job_id}</span>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
 
     timeline_ph = st.empty()
     status_ph   = st.empty()
@@ -1678,21 +1653,34 @@ elif page == "Contract Viewer":
         if client.get("name") or vendor.get("name"):
             col_c, col_v = st.columns(2, gap="large")
             with col_c:
-                st.markdown(f"""
-                <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text-muted);
-                     text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Client</div>
-                <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px;">
-                    {client.get("name","—")}</div>
-                {"".join(f'<div style="font-size:11px;color:var(--text-muted);">✍ {s.get("name","")} · {s.get("title","")}</div>' for s in client.get("signatories",[]) if s.get("name"))}
-                """, unsafe_allow_html=True)
+                st.markdown(
+                    '<div style="font-size:10px;font-family:\'DM Mono\',monospace;color:var(--text-muted);'
+                    'text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Client</div>',
+                    unsafe_allow_html=True
+                )
+                render_summary_row("Name", fmt_val(client.get("name")), canon_path="parties.client.name")
+                # Signatories
+                for si, sig in enumerate(client.get("signatories", [])):
+                    if sig.get("name"):
+                        render_summary_row(
+                            f"Signatory {si+1}",
+                            fmt_val(f"{sig.get('name','')}  ·  {sig.get('title','')}".strip(" ·")),
+                            canon_path=f"parties.client.signatories.{si}.name"
+                        )
             with col_v:
-                st.markdown(f"""
-                <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text-muted);
-                     text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Vendor</div>
-                <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px;">
-                    {vendor.get("name","—")}</div>
-                {"".join(f'<div style="font-size:11px;color:var(--text-muted);">✍ {s.get("name","")} · {s.get("title","")}</div>' for s in vendor.get("signatories",[]) if s.get("name"))}
-                """, unsafe_allow_html=True)
+                st.markdown(
+                    '<div style="font-size:10px;font-family:\'DM Mono\',monospace;color:var(--text-muted);'
+                    'text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Vendor</div>',
+                    unsafe_allow_html=True
+                )
+                render_summary_row("Name", fmt_val(vendor.get("name")), canon_path="parties.vendor.name")
+                for si, sig in enumerate(vendor.get("signatories", [])):
+                    if sig.get("name"):
+                        render_summary_row(
+                            f"Signatory {si+1}",
+                            fmt_val(f"{sig.get('name','')}  ·  {sig.get('title','')}".strip(" ·")),
+                            canon_path=f"parties.vendor.signatories.{si}.name"
+                        )
         else:
             st.markdown('<div style="color:var(--text-muted);font-size:13px;">No party information extracted.</div>', unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
@@ -1947,15 +1935,24 @@ elif page == "Contract Viewer":
                 chosen_short   = chosen_display[:80] + "…" if len(chosen_display) > 80 else chosen_display
 
                 # Build the radio options: chosen + each alternative + custom
-                radio_options = [f"✅ Keep chosen  ·  {chosen_short}  [{source}]"]
-                alt_values    = []
+                # Also keep a separate label→value map so long values that get
+                # truncated in the radio label can still be recovered exactly.
+                radio_options  = [f"✅ Keep chosen  ·  {chosen_short}  [{source}]"]
+                alt_values     = []
+                label_to_value = {}   # radio label → raw canonical value
                 for a in alts:
                     alt_display = _clean_conflict_val(a.get("value", "—"))
                     alt_short   = alt_display[:80] + "…" if len(alt_display) > 80 else alt_display
                     alt_label   = f"🔄 Use overridden  ·  {alt_short}  [{a.get('source','?')}]"
                     radio_options.append(alt_label)
                     alt_values.append(str(a.get("value", "")))
+                    label_to_value[alt_label] = str(a.get("value", ""))
                 radio_options.append("✏️ Enter custom value")
+
+                # Persist the label→value map so the Regenerate button can look it up
+                if "conflict_label_values" not in st.session_state:
+                    st.session_state.conflict_label_values = {}
+                st.session_state.conflict_label_values[field] = label_to_value
 
                 # Header card
                 st.markdown(f"""
@@ -2087,9 +2084,9 @@ elif page == "Contract Viewer":
                 # Build overrides dict to POST to API
                 overrides = {}
                 for i, conflict in enumerate(conflicts):
-                    field        = conflict.get("field", f"Conflict {i+1}")
-                    chosen_opt   = st.session_state.conflict_overrides.get(field, "")
-                    alts         = conflict.get("alternatives", [])
+                    field      = conflict.get("field", f"Conflict {i+1}")
+                    chosen_opt = st.session_state.conflict_overrides.get(field, "")
+                    alts       = conflict.get("alternatives", [])
 
                     if chosen_opt.startswith("✅ Keep chosen"):
                         continue  # no override needed
@@ -2098,11 +2095,21 @@ elif page == "Contract Viewer":
                         if custom:
                             overrides[field] = custom
                     else:
-                        # Extract the alt value — it's one of the alt_values
-                        for a in alts:
-                            if str(a.get("value", "")) in chosen_opt:
-                                overrides[field] = a.get("value", "")
-                                break
+                        # Use the stored label→value map from conflict_label_values.
+                        # Falls back to substring search if the map entry is missing
+                        # (e.g. after a hot-reload where session state rebuilt).
+                        stored_map = st.session_state.get("conflict_label_values", {})
+                        field_map  = stored_map.get(field, {})
+                        if chosen_opt in field_map:
+                            overrides[field] = field_map[chosen_opt]
+                        else:
+                            # Fallback: match by truncated prefix (covers short values)
+                            for a in alts:
+                                raw = str(a.get("value", ""))
+                                truncated = raw[:80]
+                                if truncated in chosen_opt or raw in chosen_opt:
+                                    overrides[field] = raw
+                                    break
 
                 if not overrides:
                     st.warning("No overrides selected — please choose an alternative or custom value for at least one conflict.")
