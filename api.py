@@ -469,6 +469,40 @@ def download_canonical(job_id: str, _key: str = Security(verify_api_key)):
         media_type="application/json",
         filename=f"{job_id}-canonical.json"
     )
+
+
+@app.get("/download/{job_id}/source", tags=["Downloads"])
+def download_source(job_id: str, _key: str = Security(verify_api_key)):
+    """Return the original uploaded file so the frontend can preview it."""
+    if job_id not in JOBS:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    # File was saved as UPLOAD_DIR / {job_id}{ext}
+    matches = list(UPLOAD_DIR.glob(f"{job_id}.*"))
+    if not matches:
+        raise HTTPException(status_code=404, detail="Source file not found")
+
+    source_path = matches[0]
+    ext = source_path.suffix.lower()
+
+    mime_map = {
+        ".pdf":  "application/pdf",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".doc":  "application/msword",
+        ".eml":  "message/rfc822",
+        ".mp3":  "audio/mpeg",
+        ".wav":  "audio/wav",
+        ".m4a":  "audio/mp4",
+        ".txt":  "text/plain",
+    }
+    media_type = mime_map.get(ext, "application/octet-stream")
+    original_name = JOBS[job_id].get("file_name", f"source{ext}")
+
+    return FileResponse(
+        path=str(source_path),
+        media_type=media_type,
+        filename=original_name,
+    )
 from pydantic import BaseModel
 
 
@@ -612,17 +646,6 @@ def _regenerate_sync(
         c for c in canonical.get("conflicts", [])
         if c.get("field") not in resolved_fields
     ]
-
-    # Remove missing fields that the user has now supplied values for.
-    # missingFields entries are stored as dot-notation strings (e.g. "parties.client.name")
-    # which match the override keys exactly — prune them so the PDF banner and
-    # appendix reflect the corrected counts rather than the stale original counts.
-    existing_missing = canonical.get("missingFields", [])
-    if existing_missing:
-        canonical["missingFields"] = [
-            f for f in existing_missing
-            if (f if isinstance(f, str) else f.get("field", "")) not in resolved_fields
-        ]
 
     # Persist patched canonical
     with open(canonical_path, "w") as f:
