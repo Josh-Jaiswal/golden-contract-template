@@ -2415,106 +2415,49 @@ elif page == "Contract Viewer":
                     else:
                         resolved_count += 1
 
-                # ── Per-card action buttons ──────────────────────────────
+                # ── Per-card: Accept Chosen Value ────────────────────────
                 st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-                # Check if this card is in "pending confirm" state
                 _pending = field in st.session_state.conflict_pending_confirm
 
                 if not _pending:
-                    # Show "Accept Chosen Value" button — dismisses the conflict
                     _btn_col, _ = st.columns([2, 5])
                     with _btn_col:
                         if st.button(
                             "✓  Accept Chosen Value",
                             key=f"accept_chosen_{i}",
-                            help=f"Mark '{field}' as resolved using the already-chosen value — no override needed",
+                            help=f"Keep the already-chosen value for '{field}' and dismiss this conflict",
                         ):
                             st.session_state.conflict_pending_confirm.add(field)
                             st.rerun()
                 else:
-                    # Confirmation step
+                    # Confirmation banner — no regenerate here, just dismiss
                     st.markdown(f"""
                     <div style="
                         background: rgba(0,232,122,0.06);
-                        border: 1px solid rgba(0,232,122,0.22);
+                        border: 1px solid rgba(0,232,122,0.25);
                         border-radius: 8px;
-                        padding: 12px 16px;
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        margin-bottom: 4px;
+                        padding: 14px 16px;
+                        margin-bottom: 6px;
                     ">
-                      <div style="font-size:18px;">✅</div>
-                      <div>
+                      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                        <div style="font-size:16px;">✅</div>
                         <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--green);">
                             Accept chosen value for <em>{field}</em>?
                         </div>
-                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
-                            This conflict will be marked resolved and excluded from the regeneration payload.
-                        </div>
+                      </div>
+                      <div style="font-size:12px;color:var(--text-muted);line-height:1.5;padding-left:26px;">
+                          This conflict will be dismissed and the chosen value will be kept.
+                          Click <strong style="color:var(--gold);">Regenerate Documents</strong> at the bottom of the page for this to reflect in your documents.
                       </div>
                     </div>
                     """, unsafe_allow_html=True)
-                    _c_confirm, _c_cancel, _ = st.columns([1.4, 1, 5])
+                    _c_confirm, _c_cancel, _ = st.columns([1.2, 1, 5])
                     with _c_confirm:
-                        if st.button(
-                            "⚡ Confirm & Regenerate",
-                            key=f"confirm_accept_{i}",
-                            type="primary",
-                        ):
+                        if st.button("✓  Confirm", key=f"confirm_accept_{i}", type="primary"):
                             st.session_state.conflict_dismissed.add(field)
                             st.session_state.conflict_pending_confirm.discard(field)
-                            # Build overrides for all non-dismissed, non-keep-chosen conflicts
-                            _overrides = {}
-                            for _j, _c in enumerate(conflicts):
-                                _f  = _c.get("field", f"Conflict {_j+1}")
-                                if _f in st.session_state.conflict_dismissed:
-                                    continue
-                                _opt = st.session_state.conflict_overrides.get(_f, "")
-                                _alts = _c.get("alternatives", [])
-                                if not _opt or _opt.startswith("✅ Keep chosen"):
-                                    continue
-                                elif _opt == "✏️ Enter custom value":
-                                    _cv = st.session_state.conflict_custom_text.get(_f, "").strip()
-                                    if _cv:
-                                        _overrides[_f] = _cv
-                                else:
-                                    _fm = st.session_state.get("conflict_label_values", {}).get(_f, {})
-                                    if _opt in _fm:
-                                        _overrides[_f] = _fm[_opt]
-                                    else:
-                                        for _a in _alts:
-                                            _raw = str(_a.get("value", ""))
-                                            if _raw[:80] in _opt or _raw in _opt:
-                                                _overrides[_f] = _raw
-                                                break
-                            with st.spinner("Submitting resolution and queuing regeneration…"):
-                                try:
-                                    _r = requests.post(
-                                        f"{API_URL}/jobs/{job_id}/regenerate",
-                                        headers={"X-API-Key": API_KEY},
-                                        json={"overrides": _overrides},
-                                    )
-                                    if _r.status_code == 200:
-                                        st.session_state.job_id = _r.json().get("job_id", job_id)
-                                        st.session_state.conflict_overrides   = {}
-                                        st.session_state.conflict_custom_text = {}
-                                        st.session_state.conflict_dismissed   = set()
-                                        st.session_state.conflict_pending_confirm = set()
-                                        st.session_state.page = "Job Status"
-                                        st.rerun()
-                                    elif _r.status_code == 404:
-                                        st.error("The /regenerate endpoint isn't deployed yet.")
-                                        st.code(json.dumps({
-                                            "endpoint": f"POST /jobs/{job_id}/regenerate",
-                                            "body": {"overrides": _overrides},
-                                            "expected_response": {"job_id": "<new_or_same_job_id>", "status": "queued"}
-                                        }, indent=2), language="json")
-                                    else:
-                                        st.error(f"API error {_r.status_code}: {_r.text}")
-                                except Exception as _e:
-                                    st.error(f"Connection failed: {_e}")
+                            st.rerun()
                     with _c_cancel:
                         if st.button("✕ Cancel", key=f"cancel_accept_{i}"):
                             st.session_state.conflict_pending_confirm.discard(field)
@@ -2522,8 +2465,16 @@ elif page == "Contract Viewer":
 
                 st.markdown("<div style='margin-bottom:12px'></div>", unsafe_allow_html=True)
 
-            # ── Scroll nudge — appears once at least 1 conflict is resolved ──
+            # ── Scroll nudge — appears once at least 1 conflict is dismissed/resolved ──
+            _dismissed_c = len(st.session_state.conflict_dismissed)
+            _override_c  = resolved_count - _dismissed_c
             if resolved_count > 0:
+                _nudge_parts = []
+                if _dismissed_c > 0:
+                    _nudge_parts.append(f"{_dismissed_c} accepted")
+                if _override_c > 0:
+                    _nudge_parts.append(f"{_override_c} override{'s' if _override_c != 1 else ''}")
+                _nudge_str = " · ".join(_nudge_parts)
                 st.markdown(f"""
                 <div style="
                     display:flex;
@@ -2539,16 +2490,16 @@ elif page == "Contract Viewer":
                   <div style="font-size:18px;">👇</div>
                   <div>
                     <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:600;color:var(--gold);">
-                        {resolved_count} override{'s' if resolved_count != 1 else ''} ready
+                        {_nudge_str} ready
                     </div>
                     <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
-                        Scroll down to regenerate your documents with the updated values
+                        Scroll down and click Regenerate Documents for changes to reflect in your documents
                     </div>
                   </div>
                 </div>
                 """, unsafe_allow_html=True)
 
-            # ── Regenerate button — always visible, but pulsing when resolves > 0 ──
+            # ── Regenerate button — always visible, pulsing when there's something to apply ──
             st.markdown("""
             <div style="
                 border-top:1px solid #222;
@@ -2556,7 +2507,12 @@ elif page == "Contract Viewer":
             "></div>
             """, unsafe_allow_html=True)
 
-            regen_label = f"⚡ Regenerate Documents ({resolved_count} override{'s' if resolved_count != 1 else ''})" if resolved_count > 0 else "⚡ Regenerate Documents"
+            _regen_parts = []
+            if _dismissed_c > 0:
+                _regen_parts.append(f"{_dismissed_c} accepted")
+            if _override_c > 0:
+                _regen_parts.append(f"{_override_c} override{'s' if _override_c != 1 else ''}")
+            regen_label = f"⚡ Regenerate Documents  ({', '.join(_regen_parts)})" if _regen_parts else "⚡ Regenerate Documents"
 
             if resolved_count > 0:
                 st.markdown("""
@@ -2573,35 +2529,37 @@ elif page == "Contract Viewer":
                 """, unsafe_allow_html=True)
 
             if st.button(regen_label, type="primary", use_container_width=True):
-                # Build overrides dict to POST to API
+                # Build overrides dict — skip dismissed (accepted) conflicts
                 overrides = {}
                 for i, conflict in enumerate(conflicts):
                     field        = conflict.get("field", f"Conflict {i+1}")
                     chosen_opt   = st.session_state.conflict_overrides.get(field, "")
                     alts         = conflict.get("alternatives", [])
 
-                    if chosen_opt.startswith("✅ Keep chosen"):
+                    # Dismissed = user accepted the chosen value; no override needed
+                    if field in st.session_state.conflict_dismissed:
+                        continue
+                    if not chosen_opt or chosen_opt.startswith("✅ Keep chosen"):
                         continue  # no override needed
                     elif chosen_opt == "✏️ Enter custom value":
                         custom = st.session_state.conflict_custom_text.get(field, "").strip()
                         if custom:
                             overrides[field] = custom
                     else:
-                        # Use stored label→value map — avoids mismatch when
-                        # the full value was truncated in the radio label
                         field_map = st.session_state.get("conflict_label_values", {}).get(field, {})
                         if chosen_opt in field_map:
                             overrides[field] = field_map[chosen_opt]
                         else:
-                            # Fallback for short values that fit untruncated
                             for a in alts:
                                 raw = str(a.get("value", ""))
                                 if raw[:80] in chosen_opt or raw in chosen_opt:
                                     overrides[field] = raw
                                     break
 
-                if not overrides:
-                    st.warning("No overrides selected — please choose an alternative or custom value for at least one conflict.")
+                # Accepted conflicts count as resolved even with no payload override
+                _has_work = overrides or st.session_state.conflict_dismissed
+                if not _has_work:
+                    st.warning("Accept or override at least one conflict before regenerating.")
                 else:
                     with st.spinner("Submitting overrides and queuing regeneration…"):
                         try:
@@ -2613,9 +2571,11 @@ elif page == "Contract Viewer":
                             if r.status_code == 200:
                                 new_job_id = r.json().get("job_id", job_id)
                                 st.session_state.job_id = new_job_id
-                                # Clear override state for fresh run
+                                # Clear all conflict state for fresh run
                                 st.session_state.conflict_overrides = {}
                                 st.session_state.conflict_custom_text = {}
+                                st.session_state.conflict_dismissed = set()
+                                st.session_state.conflict_pending_confirm = set()
                                 st.session_state.page = "Job Status"
                                 st.rerun()
                             elif r.status_code == 404:
