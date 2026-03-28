@@ -1801,23 +1801,33 @@ elif page == "Contract Viewer":
     _conflict_tab_label = f"⚡  Conflicts  ({_remaining_count})" if _remaining_count else "⚡  Conflicts  ✓"
     tabs = st.tabs(["📋  Summary", _conflict_tab_label, "🔍  Missing Fields", "{ }  Raw JSON"])
 
-    # ── Restore active tab after rerun (Streamlit resets to tab 0 on every rerun) ──
+    # ── Restore active tab after rerun ──────────────────────────────────────────
+    # Streamlit always resets to tab 0 on rerun. We work around this by injecting
+    # JS that repeatedly tries to click the correct tab until the DOM is ready.
     if "active_cv_tab" not in st.session_state:
         st.session_state.active_cv_tab = 0
     _active_tab_idx = st.session_state.active_cv_tab
     if _active_tab_idx > 0:
+        # Place the script inside the iframe via st.components would be ideal,
+        # but unsafe_allow_html scripts DO execute in Streamlit's frontend.
+        # We use a retry loop with increasing delays to handle slow renders.
         st.markdown(f"""
         <script>
         (function() {{
-            function _clickTab() {{
-                var btns = window.parent.document.querySelectorAll('[data-baseweb="tab"]');
-                if (btns.length > {_active_tab_idx}) {{
-                    btns[{_active_tab_idx}].click();
-                }} else {{
-                    setTimeout(_clickTab, 80);
+            var _target = {_active_tab_idx};
+            var _attempts = 0;
+            var _maxAttempts = 30;
+            function _tryClick() {{
+                _attempts++;
+                var btns = window.parent.document.querySelectorAll('button[role="tab"]');
+                if (btns.length > _target) {{
+                    btns[_target].click();
+                }} else if (_attempts < _maxAttempts) {{
+                    setTimeout(_tryClick, 100);
                 }}
             }}
-            setTimeout(_clickTab, 80);
+            // Small initial delay then retry loop
+            setTimeout(_tryClick, 150);
         }})();
         </script>
         """, unsafe_allow_html=True)
@@ -2316,6 +2326,9 @@ elif page == "Contract Viewer":
             """, unsafe_allow_html=True)
 
             resolved_count = 0
+            _active_conflicts = [c for c in conflicts if c.get("field", "") not in st.session_state.conflict_dismissed]
+            _active_total = len(_active_conflicts)
+            _active_i = 0  # renumbered index among non-dismissed conflicts
 
             for i, conflict in enumerate(conflicts):
                 field   = conflict.get("field", f"Conflict {i+1}")
@@ -2327,6 +2340,8 @@ elif page == "Contract Viewer":
                 if field in st.session_state.conflict_dismissed:
                     resolved_count += 1   # count it toward regenerate tally
                     continue
+
+                _active_i += 1  # increment visible conflict number
 
                 def _clean_conflict_val(v):
                     """Flatten list values and strip noise for display."""
@@ -2383,7 +2398,7 @@ elif page == "Contract Viewer":
                         color:var(--gold);
                         letter-spacing:0.6px;
                         text-transform:uppercase;
-                    ">Conflict {i+1} of {len(conflicts)}</div>
+                    ">Conflict {_active_i} of {_active_total}</div>
                     <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);">⚡ {field}</div>
                   </div>
                   <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px;">
