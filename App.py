@@ -16,25 +16,25 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
 :root {
-  --gold: #FFE600;
-  --gold-dim: rgba(255,230,0,0.12);
-  --gold-glow: rgba(255,230,0,0.08);
-  --bg: #080808;
-  --surface: #111111;
-  --surface2: #181818;
-  --border: #222222;
-  --border-bright: #2e2e2e;
-  --text: #f0f0f0;
-  --text-muted: #666;
-  --text-dim: #999;
-  --green: #00e87a;
-  --green-dim: rgba(0,232,122,0.12);
-  --amber: #ffb300;
-  --amber-dim: rgba(255,179,0,0.12);
-  --red: #ff4d4d;
-  --red-dim: rgba(255,77,77,0.12);
-  --blue: #4d9fff;
-  --blue-dim: rgba(77,159,255,0.10);
+  --gold: #D4A800;
+  --gold-dim: rgba(212,168,0,0.10);
+  --gold-glow: rgba(212,168,0,0.06);
+  --bg: #ffffff;
+  --surface: #f7f7f7;
+  --surface2: #efefef;
+  --border: #e0e0e0;
+  --border-bright: #cccccc;
+  --text: #111111;
+  --text-muted: #888888;
+  --text-dim: #555555;
+  --green: #00875a;
+  --green-dim: rgba(0,135,90,0.10);
+  --amber: #b45309;
+  --amber-dim: rgba(180,83,9,0.10);
+  --red: #cc2200;
+  --red-dim: rgba(204,34,0,0.08);
+  --blue: #1a5fa8;
+  --blue-dim: rgba(26,95,168,0.10);
 }
 
 html, body, [class*="css"], .stApp {
@@ -47,7 +47,7 @@ html, body, [class*="css"], .stApp {
 /* Scrollbar */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: #cccccc; border-radius: 4px; }
 
 /* ── HEADER ── */
 .ey-header {
@@ -453,7 +453,7 @@ html, body, [class*="css"], .stApp {
 .mf-items {
   border-top: 1px solid var(--border);
   padding: 8px 0;
-  background: #0d0d0d;
+  background: var(--surface2);
 }
 .mf-item {
   display: flex;
@@ -654,7 +654,7 @@ button[kind="primary"],
 /* ACTIVE TAB */
 .stTabs [aria-selected="true"] {
   color: var(--gold) !important;
-  background: rgba(255,230,0,0.08) !important;
+  background: rgba(212,168,0,0.08) !important;
 
   border-bottom: 3px solid var(--gold) !important;
 
@@ -663,14 +663,14 @@ button[kind="primary"],
 }
 
 .stProgress > div > div { background: var(--gold) !important; border-radius: 4px; }
-.stProgress { background: var(--surface2) !important; border-radius: 4px; }
+.stProgress { background: #e5e5e5 !important; border-radius: 4px; }
 div[data-testid="stMetric"] {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 16px 20px;
 }
-.stAlert { background: var(--surface2) !important; border-radius: 8px !important; border: 1px solid var(--border) !important; }
+.stAlert { background: var(--surface) !important; border-radius: 8px !important; border: 1px solid var(--border) !important; color: var(--text) !important; }
 
 /* Nav routing buttons — overlaid invisibly on top of the visual nav card */
 .nav-btn-overlay {
@@ -768,7 +768,7 @@ div[data-testid="stTextInput"] input:not(:focus):placeholder-shown {
   font-family: 'Syne', sans-serif;
   font-size: 18px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text);
   letter-spacing: -0.3px;
 }
 .conflict-count-label {
@@ -802,46 +802,46 @@ st.markdown("""
 .tl-label-done { color: var(--green); }
 .tl-label-active { color: var(--yellow); }
 .conflict-box {
-  border: 1px solid #2a2a2a;
+  border: 1px solid var(--border);
   padding: 0;
   border-radius: 10px;
   margin-bottom: 14px;
-  background: #111111;
+  background: var(--surface);
   overflow: hidden;
 }
 .conflict-box-header {
-  background: rgba(255,77,77,0.06);
-  border-bottom: 1px solid #2a2a2a;
+  background: rgba(204,34,0,0.05);
+  border-bottom: 1px solid var(--border);
   padding: 12px 18px;
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
   font-weight: 600;
-  color: #ff4d4d;
+  color: var(--red);
   font-family: 'DM Mono', monospace;
 }
 .conflict-title { font-weight: bold; margin-bottom: 12px; }
 .conflict-body { display: flex; gap: 0; }
 .conflict-side { flex: 1; padding: 14px 18px; }
-.conflict-side:not(:last-child) { border-right: 1px solid #222; }
+.conflict-side:not(:last-child) { border-right: 1px solid var(--border); }
 .conflict-doc-label {
   font-size: 10px;
   font-weight: 600;
   margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  color: #555;
+  color: var(--text-muted);
   font-family: 'DM Mono', monospace;
 }
 .conflict-text {
-  background: #181818;
+  background: var(--surface2);
   padding: 10px 12px;
   border-radius: 6px;
   font-size: 13px;
-  color: #e0e0e0;
+  color: var(--text);
   line-height: 1.55;
-  border-left: 2px solid #ff4d4d;
+  border-left: 2px solid var(--red);
 }
 </style>
 """, unsafe_allow_html=True)
@@ -849,8 +849,8 @@ st.markdown("""
 st.markdown("""
 <style>
 .mf-card {
-    background: #1b1b20;
-    border: 1px solid #2b2b33;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 10px;
     padding: 14px 16px;
     margin-bottom: 12px;
@@ -860,13 +860,13 @@ st.markdown("""
     transition: 0.15s ease;
 }
 .mf-card:hover {
-    border-color: #3f3f55;
-    background: #212128;
+    border-color: var(--border-bright);
+    background: var(--surface2);
 }
 
 .mf-icon {
     font-size: 15px;
-    color: #ffcd4d;
+    color: var(--amber);
     font-weight: 700;
     margin-bottom: 4px;
 }
@@ -884,12 +884,12 @@ st.markdown("""
 }
 
 .mf-badge {
-    background: #2a2a33;
+    background: var(--surface2);
     padding: 4px 8px;
     border-radius: 6px;
     font-size: 11px;
     font-family: 'DM Mono', monospace;
-    color: #cfcfd9;
+    color: var(--text);
     margin-left: 8px;
 }
 
@@ -918,8 +918,8 @@ st.markdown("""
 <style>
 /* --- COLLAPSIBLE SECTION SYSTEM --- */
 .mf-section {
-    border: 1px solid #2c2c33;
-    background: #1a1a1f;
+    border: 1px solid var(--border);
+    background: var(--surface);
     border-radius: 8px;
     margin-bottom: 14px;
 }
@@ -940,7 +940,7 @@ st.markdown("""
 }
 
 .mf-label:hover {
-    background: #222229;
+    background: var(--surface2);
 }
 
 .mf-chevron {
@@ -964,25 +964,25 @@ st.markdown("""
 
 /* --- BADGE --- */
 .mf-badge {
-    background: #2f2f48;
+    background: var(--surface2);
     padding: 4px 8px;
     border-radius: 6px;
     font-size: 11px;
-    color: #e3e3f5;
+    color: var(--text);
     margin-left: 10px;
 }
 
 /* --- FIELD CARDS --- */
 .mf-card {
-    background: #202026;
-    border: 1px solid #33333d;
+    background: var(--surface);
+    border: 1px solid var(--border);
     padding: 12px 14px;
     border-radius: 6px;
     margin-top: 10px;
 }
 
 .mf-icon {
-    color: #ffcf4d;
+    color: var(--amber);
     font-size: 15px;
 }
 
@@ -994,7 +994,7 @@ st.markdown("""
 
 .mf-hint {
     font-size: 12px;
-    color: #9b9ba5;
+    color: var(--text-muted);
     margin-top: 2px;
 }
 </style>
@@ -1004,8 +1004,8 @@ st.markdown("""
 <style>
 
 .mf-section {
-    border: 1px solid #2c2c33;
-    background: #1a1a1f;
+    border: 1px solid var(--border);
+    background: var(--surface);
     border-radius: 8px;
     margin-bottom: 14px;
 }
@@ -1024,7 +1024,7 @@ st.markdown("""
     font-weight: 600;
 }
 
-.mf-label:hover { background: #222229; }
+.mf-label:hover { background: var(--surface2); }
 
 .mf-chevron {
     transition: transform 0.2s ease;
@@ -1049,8 +1049,8 @@ st.markdown("""
 /*** --- Card Style --- ***/
 
 .mf-card {
-    background: #202026;
-    border: 1px solid #33333d;
+    background: var(--surface);
+    border: 1px solid var(--border);
     padding: 12px 14px;
     border-radius: 6px;
     margin-top: 10px;
@@ -1058,8 +1058,8 @@ st.markdown("""
 }
 
 .mf-card:hover {
-    background: #27272f;
-    border-color: #3f3f55;
+    background: var(--surface2);
+    border-color: var(--border-bright);
 }
 
 .mf-icon {
@@ -1079,17 +1079,17 @@ st.markdown("""
 }
 
 .mf-badge {
-    background: #2f2f48;
+    background: var(--surface2);
     padding: 4px 8px;
     border-radius: 6px;
     font-size: 11px;
-    color: #e3e3f5;
+    color: var(--text);
     margin-left: 10px;
 }
 
 /*** JSON Highlighting ***/
 .highlight-json {
-    background: #444450 !important;
+    background: var(--surface2) !important;
     padding: 4px;
     border-radius: 4px;
 }
@@ -2381,8 +2381,8 @@ elif page == "Contract Viewer":
                 st.markdown(f"""
                 <div style="
                     background: var(--surface);
-                    border: 1px solid #2a2a2a;
-                    border-left: 3px solid rgba(255,230,0,0.5);
+                    border: 1px solid var(--border);
+                    border-left: 3px solid rgba(212,168,0,0.6);
                     border-radius: 10px;
                     padding: 16px 20px 8px 20px;
                     margin-bottom: 4px;
@@ -2687,8 +2687,8 @@ elif page == "Contract Viewer":
                         st.markdown(f"""
                         <div style="
                             background: var(--surface2);
-                            border: 1px solid {'rgba(255,230,0,0.25)' if current.strip() else '#2d2d35'};
-                            border-left: 3px solid {'var(--gold)' if current.strip() else '#ffcf4c'};
+                            border: 1px solid {'rgba(212,168,0,0.35)' if current.strip() else 'var(--border)'};
+                            border-left: 3px solid {'var(--gold)' if current.strip() else 'var(--amber)'};
                             border-radius: 8px;
                             padding: 10px 14px 4px 14px;
                             margin-bottom: 4px;
@@ -2699,7 +2699,7 @@ elif page == "Contract Viewer":
                             </div>
                             <div style="font-size:13px;font-weight:600;color:var(--text);">{item['label']}</div>
                             <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text-muted);
-                                 background:var(--surface);border:1px solid #2a2a2a;border-radius:4px;
+                                 background:var(--surface2);border:1px solid var(--border);border-radius:4px;
                                  padding:1px 7px;">{field_key}</div>
                           </div>
                           <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">{item['hint']}</div>
@@ -2746,7 +2746,7 @@ elif page == "Contract Viewer":
                 """, unsafe_allow_html=True)
 
             # ── Regenerate button ──────────────────────────────────────
-            st.markdown('<div style="border-top:1px solid #222;margin:16px 0 20px 0;"></div>', unsafe_allow_html=True)
+            st.markdown('<div style="border-top:1px solid var(--border);margin:16px 0 20px 0;"></div>', unsafe_allow_html=True)
 
             regen_label_mf = f"⚡ Regenerate Documents ({filled_count} field{'s' if filled_count != 1 else ''} added)" if filled_count > 0 else "⚡ Regenerate Documents"
 
