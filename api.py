@@ -175,11 +175,6 @@ def _run_pipeline_sync(job_id: str, file_path: str, contract_type: str) -> dict:
         json.dump(canonical, f, indent=2)
 
     # Step 3 — Decide which docs to generate
-    #
-    # FIX: run_pipeline() never writes contract_type back to the canonical dict
-    # so we cannot read it from there. For "auto" we use heuristics on canonical
-    # content fields to decide what was actually detected.
-    #
     outputs = {"canonical": str(canonical_path)}
 
     if contract_type == "both":
@@ -477,7 +472,6 @@ def download_source(job_id: str, _key: str = Security(verify_api_key)):
     if job_id not in JOBS:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
 
-    # File was saved as UPLOAD_DIR / {job_id}{ext}
     matches = list(UPLOAD_DIR.glob(f"{job_id}.*"))
     if not matches:
         raise HTTPException(status_code=404, detail="Source file not found")
@@ -503,16 +497,20 @@ def download_source(job_id: str, _key: str = Security(verify_api_key)):
         media_type=media_type,
         filename=original_name,
     )
+
+
+# ── Regenerate ────────────────────────────────────────────────────────────────
+
 from pydantic import BaseModel
+from typing import List
 
 
 class RegenerateRequest(BaseModel):
     overrides: dict
-    # Keys are dot-notation canonical paths, values are the replacement strings.
-    # Examples:
-    #   { "confidentiality.term": "3 years" }
-    #   { "parties.client.name": "Contoso India Pvt. Ltd." }
-    #   { "commercials.totalValue": "1200000" }
+    # Keys are field names (e.g. "confidentiality.term"), values are replacement strings.
+    dismissed_fields: List[str] = []
+    # Fields the user accepted as-is — these are REMOVED from canonical.conflicts
+    # so they no longer appear as conflicts after regeneration.
 
 
 @app.post("/jobs/{job_id}/regenerate", tags=["Pipeline"])
@@ -522,16 +520,21 @@ async def regenerate_job(
     _key: str = Security(verify_api_key),
 ):
     """
-    Patch the saved canonical JSON with user-supplied overrides and
-    re-run ONLY the PDF generation step.
+    Patch the saved canonical JSON with user-supplied overrides, remove
+    dismissed conflicts, and re-run ONLY the PDF generation step.
 
     No Azure calls are made — extraction is skipped entirely.
-    Reads the canonical.json saved during the original run, applies
-    the overrides, writes new PDFs to the same output folder, and
-    reuses the same job_id so the frontend poll works without change.
 
     POST body:
-        { "overrides": { "canonical.field.path": "corrected_value" } }
+        {
+          "overrides": { "field_name": "corrected_value" },
+          "dismissed_fields": ["field_name_1", "field_name_2"]
+        }
+
+    - overrides      — fields where the user picked an alternative or custom value
+    - dismissed_fields — fields where the user accepted the chosen value as correct;
+                         these are stripped from canonical.conflicts so they won't
+                         reappear as conflicts on the next load
     """
     if job_id not in JOBS:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
@@ -560,16 +563,22 @@ async def regenerate_job(
             job_id,
             str(canonical_path),
             body.overrides,
+            body.dismissed_fields,
             job.get("contract_type", "auto"),
         )
     )
 
     return {
-        "job_id":            job_id,
-        "status":            "queued",
-        "message":           f"Regeneration queued with {len(body.overrides)} override(s). Poll /jobs/{job_id}.",
-        "poll_url":          f"/jobs/{job_id}",
-        "overrides_applied": list(body.overrides.keys()),
+        "job_id":              job_id,
+        "status":              "queued",
+        "message":             (
+            f"Regeneration queued with {len(body.overrides)} override(s) "
+            f"and {len(body.dismissed_fields)} dismissed conflict(s). "
+            f"Poll /jobs/{job_id}."
+        ),
+        "poll_url":            f"/jobs/{job_id}",
+        "overrides_applied":   list(body.overrides.keys()),
+        "conflicts_dismissed": body.dismissed_fields,
     }
 
 
@@ -577,12 +586,16 @@ async def _run_regenerate_job(
     job_id: str,
     canonical_path: str,
     overrides: dict,
+    dismissed_fields: list,
     contract_type: str,
 ):
-    """Background task: patch canonical → regenerate PDFs only."""
+    """Background task: patch canonical → remove dismissed conflicts → regenerate PDFs."""
     import asyncio
     JOBS[job_id]["status"] = "processing"
-    log.info(f"[Job {job_id}] Regenerating — overrides on: {list(overrides.keys())}")
+    log.info(
+        f"[Job {job_id}] Regenerating — "
+        f"overrides: {list(overrides.keys())} | dismissed: {dismissed_fields}"
+    )
     try:
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(
@@ -591,6 +604,7 @@ async def _run_regenerate_job(
             job_id,
             canonical_path,
             overrides,
+            dismissed_fields,
             contract_type,
         )
         JOBS[job_id].update({
@@ -608,63 +622,107 @@ async def _run_regenerate_job(
         })
 
 
+def _set_nested(d: dict, dot_path: str, value):
+    """Set a value in a nested dict using dot notation. e.g. 'parties.client.name'"""
+    keys = dot_path.split(".")
+    for key in keys[:-1]:
+        d = d.setdefault(key, {})
+    d[keys[-1]] = value
+
+
 def _regenerate_sync(
     job_id: str,
     canonical_path: str,
     overrides: dict,
+    dismissed_fields: list,
     contract_type: str,
 ) -> dict:
     """
     1. Load saved canonical.json
-    2. Patch it with user overrides (dot-notation supported)
-    3. Remove resolved conflicts from the conflicts list so the PDF
-       appendix reflects the user's corrected values
-    4. Save patched canonical back to disk
-    5. Call generate_pdf() only — zero Azure calls
+    2. Remove dismissed conflicts from canonical["conflicts"]
+    3. Apply field overrides (dot-notation)
+    4. Save updated canonical.json
+    5. Regenerate PDFs
     """
-    import json, sys
-    from pathlib import Path
-
+    import sys, json
     ROOT = Path(__file__).resolve().parent
     if str(ROOT) not in sys.path:
         sys.path.insert(0, str(ROOT))
 
     from generation.generate_contract_pdf import generate_pdf
-    from orchestration.functions.map_to_canonical import set_nested
-
-    with open(canonical_path) as f:
-        canonical = json.load(f)
-
-    # Apply user overrides
-    for key, value in overrides.items():
-        set_nested(canonical, key, value)
-
-    # Remove conflicts that the user has now resolved so the PDF appendix
-    # doesn't still flag them as outstanding issues
-    resolved_fields = set(overrides.keys())
-    canonical["conflicts"] = [
-        c for c in canonical.get("conflicts", [])
-        if c.get("field") not in resolved_fields
-    ]
-
-    # Persist patched canonical
-    with open(canonical_path, "w") as f:
-        json.dump(canonical, f, indent=2)
 
     job_output_dir = OUTPUT_DIR / job_id
-    outputs = {"canonical": str(canonical_path)}
 
-    # For regeneration: use existing PDFs on disk as the source of truth for
-    # what was originally generated (avoids re-running auto-detect heuristics)
-    if contract_type in ("nda", "both"):
-        generate_nda = True
-        generate_sow = contract_type == "both"
+    # ── Step 1: Load canonical ────────────────────────────────────────────────
+    with open(canonical_path, "r") as f:
+        canonical = json.load(f)
+
+    # ── Step 2: Remove dismissed conflicts ───────────────────────────────────
+    # The user accepted these fields as correct — strip them from the conflicts
+    # array so they don't reappear as unresolved conflicts on the next load.
+    if dismissed_fields:
+        dismissed_set = set(dismissed_fields)
+        original_conflicts = canonical.get("conflicts", [])
+        canonical["conflicts"] = [
+            c for c in original_conflicts
+            if c.get("field", "") not in dismissed_set
+        ]
+        removed = len(original_conflicts) - len(canonical["conflicts"])
+        log.info(f"[Job {job_id}] Removed {removed} dismissed conflict(s) from canonical")
+
+    # ── Step 3: Apply field overrides ────────────────────────────────────────
+    # Also remove overridden fields from conflicts — if the user picked an
+    # alternative value, that conflict is resolved too.
+    if overrides:
+        overridden_fields = set(overrides.keys())
+        canonical["conflicts"] = [
+            c for c in canonical.get("conflicts", [])
+            if c.get("field", "") not in overridden_fields
+        ]
+        for dot_path, value in overrides.items():
+            try:
+                _set_nested(canonical, dot_path, value)
+                log.info(f"[Job {job_id}] Override applied: {dot_path} = {str(value)[:60]}")
+            except Exception as e:
+                log.warning(f"[Job {job_id}] Could not apply override '{dot_path}': {e}")
+
+    # ── Step 4: Save updated canonical ───────────────────────────────────────
+    with open(canonical_path, "w") as f:
+        json.dump(canonical, f, indent=2)
+    log.info(f"[Job {job_id}] canonical.json updated and saved")
+
+    # ── Step 5: Regenerate PDFs ───────────────────────────────────────────────
+    outputs = {"canonical": canonical_path}
+
+    # Determine which docs to regenerate based on contract_type
+    if contract_type == "both":
+        generate_nda, generate_sow = True, True
+    elif contract_type == "nda":
+        generate_nda, generate_sow = True, False
     elif contract_type == "sow":
-        generate_nda = False
-        generate_sow = True
-    else:  # auto — whatever was produced first time is still on disk
-        generate_nda = (job_output_dir / "generated-nda.pdf").exists()
-        generate_sow = (job_output_dir / "generated-sow.pdf").exists()
+        generate_nda, generate_sow = False, True
+    else:  # auto — use same heuristics as original pipeline
+        parties         = canonical.get("parties", {})
+        scope           = canonical.get("scope", {})
+        commercials     = canonical.get("commercials", {})
+        confidentiality = canonical.get("confidentiality", {})
+
+        nda_type = str(parties.get("ndaType", "")).lower()
+        generate_nda = (
+            "nda" in nda_type
+            or bool(confidentiality.get("term"))
+            or bool(confidentiality.get("exceptions"))
+            or bool(parties.get("disclosingParty"))
+        )
+        generate_sow = (
+            bool(scope.get("deliverables"))
+            or bool(scope.get("outOfScope"))
+            or bool(commercials.get("totalValue"))
+            or bool(commercials.get("milestones"))
+            or bool(commercials.get("paymentTerms"))
+        )
+        if not generate_nda and not generate_sow:
+            generate_nda = generate_sow = True
 
     if generate_nda:
         nda_path = str(job_output_dir / "generated-nda.pdf")
@@ -680,18 +738,6 @@ def _regenerate_sync(
 
     return outputs
 
-# ── Entry point ───────────────────────────────────────────────────────────────
+
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 8000))
-    log.info(f"Starting Contract Intelligence API on port {port}")
-    log.info(f"API docs available at http://localhost:{port}/docs")
-    log.info(
-        f"API key: {'[SET]' if os.getenv('CONTRACT_API_KEY') else '[using default dev key]'}"
-    )
-    uvicorn.run(
-        "api:app",
-        host="0.0.0.0",
-        port=port,
-        reload=True,     # auto-reload on code changes during development
-        log_level="info",
-    )
+    uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)

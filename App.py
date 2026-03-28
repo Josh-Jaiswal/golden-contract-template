@@ -2605,7 +2605,10 @@ elif page == "Contract Viewer":
                             r = requests.post(
                                 f"{API_URL}/jobs/{job_id}/regenerate",
                                 headers={"X-API-Key": API_KEY},
-                                json={"overrides": overrides},
+                                json={
+                                    "overrides": overrides,
+                                    "dismissed_fields": list(st.session_state.conflict_dismissed),
+                                },
                             )
                             if r.status_code == 200:
                                 new_job_id = r.json().get("job_id", job_id)
