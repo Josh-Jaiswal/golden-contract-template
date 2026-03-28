@@ -1801,6 +1801,27 @@ elif page == "Contract Viewer":
     _conflict_tab_label = f"⚡  Conflicts  ({_remaining_count})" if _remaining_count else "⚡  Conflicts  ✓"
     tabs = st.tabs(["📋  Summary", _conflict_tab_label, "🔍  Missing Fields", "{ }  Raw JSON"])
 
+    # ── Restore active tab after rerun (Streamlit resets to tab 0 on every rerun) ──
+    if "active_cv_tab" not in st.session_state:
+        st.session_state.active_cv_tab = 0
+    _active_tab_idx = st.session_state.active_cv_tab
+    if _active_tab_idx > 0:
+        st.markdown(f"""
+        <script>
+        (function() {{
+            function _clickTab() {{
+                var btns = window.parent.document.querySelectorAll('[data-baseweb="tab"]');
+                if (btns.length > {_active_tab_idx}) {{
+                    btns[{_active_tab_idx}].click();
+                }} else {{
+                    setTimeout(_clickTab, 80);
+                }}
+            }}
+            setTimeout(_clickTab, 80);
+        }})();
+        </script>
+        """, unsafe_allow_html=True)
+
     # ── TAB: SUMMARY ──────────────────────────
     with tabs[0]:
         st.markdown("<br>", unsafe_allow_html=True)
@@ -2429,6 +2450,7 @@ elif page == "Contract Viewer":
                             help=f"Keep the already-chosen value for '{field}' and dismiss this conflict",
                         ):
                             st.session_state.conflict_pending_confirm.add(field)
+                            st.session_state.active_cv_tab = 1  # stay on Conflicts tab
                             st.rerun()
                 else:
                     # Confirmation banner — no regenerate here, just dismiss
@@ -2457,10 +2479,12 @@ elif page == "Contract Viewer":
                         if st.button("✓  Confirm", key=f"confirm_accept_{i}", type="primary"):
                             st.session_state.conflict_dismissed.add(field)
                             st.session_state.conflict_pending_confirm.discard(field)
+                            st.session_state.active_cv_tab = 1  # stay on Conflicts tab
                             st.rerun()
                     with _c_cancel:
                         if st.button("✕ Cancel", key=f"cancel_accept_{i}"):
                             st.session_state.conflict_pending_confirm.discard(field)
+                            st.session_state.active_cv_tab = 1  # stay on Conflicts tab
                             st.rerun()
 
                 st.markdown("<div style='margin-bottom:12px'></div>", unsafe_allow_html=True)
