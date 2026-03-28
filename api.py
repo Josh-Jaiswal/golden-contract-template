@@ -686,6 +686,42 @@ def _regenerate_sync(
             except Exception as e:
                 log.warning(f"[Job {job_id}] Could not apply override '{dot_path}': {e}")
 
+    # ── Step 3b: Remove filled fields from missingFields ────────────────────
+    # When overrides contain a key that matches a missing field, that field is
+    # no longer missing — remove it from both "missingFields" and "missing_fields"
+    # (the canonical uses both keys depending on the extraction version).
+    if overrides:
+        filled_keys = set(overrides.keys())
+        for mf_key in ("missingFields", "missing_fields"):
+            existing = canonical.get(mf_key)
+            if not existing:
+                continue
+            if isinstance(existing, list):
+                cleaned = []
+                for entry in existing:
+                    # entry may be a plain string or a dict with a "field" key
+                    if isinstance(entry, str):
+                        # Match against the last segment of the dot-path too
+                        # e.g. override key "dates.effectiveDate" should clear "effectiveDate"
+                        if not any(
+                            entry == k or entry == k.split(".")[-1] or k.endswith("." + entry)
+                            for k in filled_keys
+                        ):
+                            cleaned.append(entry)
+                    elif isinstance(entry, dict):
+                        field_name = entry.get("field", "")
+                        if not any(
+                            field_name == k or field_name == k.split(".")[-1] or k.endswith("." + field_name)
+                            for k in filled_keys
+                        ):
+                            cleaned.append(entry)
+                    else:
+                        cleaned.append(entry)
+                removed_mf = len(existing) - len(cleaned)
+                if removed_mf:
+                    canonical[mf_key] = cleaned
+                    log.info(f"[Job {job_id}] Removed {removed_mf} filled field(s) from {mf_key}")
+
     # ── Step 4: Save updated canonical ───────────────────────────────────────
     with open(canonical_path, "w") as f:
         json.dump(canonical, f, indent=2)
