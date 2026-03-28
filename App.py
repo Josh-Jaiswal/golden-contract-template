@@ -623,40 +623,67 @@ div[data-testid="stFileUploaderDropzone"] {
   border: 1.5px dashed #c8c8c8 !important;
   border-radius: 8px !important;
 }
-div[data-testid="stFileUploader"] * { color: var(--text) !important; background: transparent !important; }
+/* All text in uploader = dark */
+div[data-testid="stFileUploader"] * { color: var(--text) !important; }
 div[data-testid="stFileUploader"] small { color: var(--text-muted) !important; }
-div[data-testid="stFileUploader"] svg { color: var(--text-muted) !important; fill: none !important; }
+/* Upload icon: force dark so it's visible on white background */
+div[data-testid="stFileUploader"] svg {
+  color: #555555 !important;
+  stroke: #555555 !important;
+  fill: none !important;           /* most upload icons are stroked, not filled */
+}
+/* But if any SVG uses fill (e.g. cloud icon body), ensure it's not white */
+div[data-testid="stFileUploaderDropzone"] svg path[fill]:not([fill="none"]) {
+  fill: #555555 !important;
+}
 div[data-testid="stFileUploader"] [data-testid="stFileUploaderDropzoneInstructions"] span {
   color: var(--text) !important; font-size: 15px !important; font-weight: 500 !important;
 }
+/* Browse button inside uploader */
 div[data-testid="stFileUploader"] button {
   background: var(--surface2) !important;
   color: var(--text) !important;
-  border: 1px solid var(--border-bright) !important;
+  border: 1.5px solid var(--border-bright) !important;
+  border-radius: 6px !important;
 }
-/* Selectbox */
-div[data-testid="stSelectbox"] > div { background: #ffffff !important; color: var(--text) !important; border: 1.5px solid var(--border-bright) !important; }
-div[data-testid="stSelectbox"] * { color: var(--text) !important; }
+/* ── Selectbox — white bg, single subtle border, no double outline ── */
+div[data-testid="stSelectbox"] { position: relative; }
 div[data-testid="stSelectbox"] label { color: var(--text) !important; font-weight: 600 !important; font-size: 14px !important; }
-div[data-baseweb="select"] { background: #ffffff !important; }
-div[data-baseweb="select"] > div { background: #ffffff !important; color: var(--text) !important; }
+div[data-testid="stSelectbox"] > div { background: transparent !important; border: none !important; }
+div[data-baseweb="select"] {
+  background: #ffffff !important;
+  border: 1.5px solid var(--border-bright) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+div[data-baseweb="select"]:focus-within {
+  border-color: #c8a800 !important;
+  box-shadow: 0 0 0 2px rgba(255,230,0,0.18) !important;
+}
+div[data-baseweb="select"] > div {
+  background: #ffffff !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--text) !important;
+}
 div[data-baseweb="select"] * { color: var(--text) !important; }
 div[data-baseweb="select"] input { color: var(--text) !important; background: #ffffff !important; }
-div[data-baseweb="popover"] { background: #ffffff !important; }
+div[data-baseweb="select"] svg { color: var(--text-muted) !important; fill: var(--text-muted) !important; }
+/* Dropdown list */
+div[data-baseweb="popover"] { background: #ffffff !important; box-shadow: 0 4px 16px rgba(0,0,0,0.10) !important; border: 1px solid var(--border) !important; border-radius: 8px !important; }
 div[data-baseweb="popover"] * { background: #ffffff !important; color: var(--text) !important; }
-div[data-baseweb="menu"] { background: #ffffff !important; border: 1px solid var(--border) !important; }
+div[data-baseweb="menu"] { background: #ffffff !important; border: none !important; }
 div[data-baseweb="menu"] * { background: #ffffff !important; color: var(--text) !important; }
 ul[role="listbox"] { background: #ffffff !important; }
 ul[role="listbox"] li { color: var(--text) !important; background: #ffffff !important; }
 ul[role="listbox"] li:hover { background: var(--surface2) !important; }
-/* Override Streamlit's dark dropdown arrow/icon */
-div[data-baseweb="select"] svg { color: var(--text-muted) !important; fill: var(--text-muted) !important; }
-button[kind="primary"],
-.stButton > button {
+/* ── PRIMARY buttons → yellow (Start Analysis, Regenerate, Confirm) ── */
+button[kind="primary"] {
   background: var(--gold) !important;
   color: #1c1c1c !important;
   font-family: 'Syne', sans-serif !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   font-size: 13px !important;
   letter-spacing: 0.3px !important;
   border: none !important;
@@ -664,8 +691,36 @@ button[kind="primary"],
   padding: 10px 20px !important;
   transition: opacity 0.2s !important;
 }
-.stButton > button:hover { opacity: 0.88 !important; }
-/* Download buttons */
+button[kind="primary"]:hover { opacity: 0.88 !important; }
+
+/* ── SECONDARY buttons → white/light (Edit, Accept, Cancel, etc.) ── */
+.stButton > button {
+  background: #ffffff !important;
+  color: var(--text) !important;
+  font-family: 'DM Sans', sans-serif !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+  border: 1.5px solid var(--border-bright) !important;
+  border-radius: 8px !important;
+  padding: 8px 18px !important;
+  transition: background 0.15s, border-color 0.15s !important;
+}
+.stButton > button:hover {
+  background: var(--surface2) !important;
+  border-color: #bbb !important;
+  opacity: 1 !important;
+}
+/* Re-apply yellow for primary kind inside .stButton wrappers */
+.stButton > button[kind="primary"] {
+  background: var(--gold) !important;
+  color: #1c1c1c !important;
+  font-family: 'Syne', sans-serif !important;
+  font-weight: 700 !important;
+  border: none !important;
+}
+.stButton > button[kind="primary"]:hover { opacity: 0.88 !important; background: var(--gold) !important; }
+
+/* ── Download buttons → yellow ── */
 div[data-testid="stDownloadButton"] > button {
   background: var(--gold) !important;
   color: #1c1c1c !important;
@@ -747,7 +802,11 @@ div[data-testid="stMetric"] {
 .nav-btn-overlay div[data-testid="column"] {
   height: 58px !important;
 }
-.nav-btn-overlay .stButton > button {
+/* Ghost overlay: must beat all button rules above — use max specificity */
+.nav-btn-overlay .stButton > button,
+.nav-btn-overlay .stButton > button[kind="primary"],
+.nav-btn-overlay .stButton > button:hover,
+.nav-btn-overlay .stButton > button[kind="primary"]:hover {
   width: 100% !important;
   height: 58px !important;
   min-height: 58px !important;
@@ -767,20 +826,9 @@ div[data-testid="stMetric"] {
 }
 
 /* ── INLINE EDIT BUTTONS in summary ── */
-[data-testid="stButton"] button {
-  color: var(--text) !important;
-}
-/* ✎ edit icon buttons — improved default state contrast */
+/* Edit buttons get slightly more prominent border */
 button[title^="Edit "] {
-  background: var(--surface2) !important;
-  border: 1px solid var(--border-bright) !important;
-  color: var(--text) !important;
-  border-radius: 4px !important;
-  font-weight: 600 !important;
-}
-button[title^="Edit "]:hover {
-  background: var(--border) !important;
-  border-color: #bbb !important;
+  border-color: var(--border-bright) !important;
 }
 /* ── EDITED PILL — gold on white is hard to read, use navy instead ── */
 span[style*="color:var(--gold)"],
@@ -788,24 +836,6 @@ span[style*="color: var(--gold)"] {
   color: #1d4ed8 !important;
   background: rgba(29,78,216,0.08) !important;
   border-color: rgba(29,78,216,0.2) !important;
-}
-/* ── ACCEPT CHOSEN VALUE button — fully visible in default state ── */
-button[title^="Keep the already-chosen"],
-button[data-testid*="accept_chosen"],
-button:has(> div > p) {
-  background: var(--surface) !important;
-  border: 1.5px solid var(--border-bright) !important;
-  color: var(--text) !important;
-}
-/* Non-primary buttons default state fix */
-.stButton > button:not([kind="primary"]) {
-  background: var(--surface2) !important;
-  border: 1.5px solid var(--border-bright) !important;
-  color: var(--text) !important;
-}
-.stButton > button:not([kind="primary"]):hover {
-  background: var(--border) !important;
-  opacity: 1 !important;
 }
 
 /* ── EXPANDERS — prevent dark background on expand ── */
@@ -911,6 +941,62 @@ div[data-testid="stTextInput"] input:not(:focus):placeholder-shown {
   color: var(--text-muted);
   font-size: 12px;
   font-family: 'DM Mono', monospace;
+}
+
+/* ── HELP / TOOLTIP "?" ICON ── */
+/* The question mark button Streamlit renders for help= params */
+button[data-testid="stBaseButton-headerNoPadding"],
+div[data-testid="stTooltipIcon"] button,
+div[data-testid="stTooltipIcon"] svg,
+button.eyuQqFLy6JpZSLF0dqd33g,          /* Streamlit internal class */
+[data-baseweb="tooltip"] + button {
+  color: var(--text-muted) !important;
+  background: var(--surface2) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 50% !important;
+}
+/* Generic help icon "?" anywhere */
+div[data-testid="stWidgetLabel"] button,
+div[data-testid="stWidgetLabel"] button svg {
+  color: var(--text) !important;
+  fill: var(--text) !important;
+  stroke: var(--text) !important;
+}
+/* Tooltip popup content */
+div[data-baseweb="tooltip"] {
+  background: #ffffff !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12) !important;
+}
+div[data-baseweb="tooltip"] * {
+  background: #ffffff !important;
+  color: var(--text) !important;
+}
+/* Streamlit's tooltip inner block */
+div[data-testid="stTooltipContent"],
+div[class*="tooltip"] {
+  background: #ffffff !important;
+  color: var(--text) !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+}
+/* Streamlit renders help icons as SVG inside a button with no testid —
+   target by appearance: small square button near a label */
+div[data-testid="stWidgetLabel"] > div > button {
+  background: var(--surface2) !important;
+  border: 1px solid var(--border-bright) !important;
+  border-radius: 50% !important;
+  width: 18px !important; height: 18px !important;
+  padding: 0 !important;
+  color: var(--text-muted) !important;
+}
+div[data-testid="stWidgetLabel"] > div > button svg {
+  color: var(--text-muted) !important;
+  fill: var(--text-muted) !important;
+  stroke: var(--text-muted) !important;
+  width: 12px !important; height: 12px !important;
 }
 
 /* ── CONFLICTS COUNTER ── */
